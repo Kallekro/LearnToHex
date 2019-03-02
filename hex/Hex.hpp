@@ -5,33 +5,33 @@
 
 namespace Hex {
 
-    enum TileState : unsigned int {
+    enum TileState : unsigned {
         Blue = 0,
         Red = 1,
         Empty = 2
     };
 
     struct LineSegment {
-        unsigned int m_count;
+        unsigned m_count;
         bool m_connected_A = false;
         bool m_connected_B = false;
 
     public:
-        std::pair<unsigned int, unsigned int>* TilePositions;
+        std::pair<unsigned, unsigned>* TilePositions;
         unsigned Count() { return m_count; }
         unsigned ConnectedA() { return m_connected_A; }
         unsigned ConnectedB() { return m_connected_B; }
-        LineSegment (std::pair<unsigned int, unsigned int>* tile_positions) {
+        LineSegment (std::pair<unsigned, unsigned>* tile_positions) {
             TilePositions = tile_positions;
-            // tile_positions = new std::pair<unsigned int, unsigned int>[count]
+            // tile_positions = new std::pair<unsigned, unsigned>[count]
         }
     };
 
     class Game {
-        static const int BOARD_SIZE = 11;
+        static const unsigned BOARD_SIZE = 11;
 
 	    shark::blas::matrix<TileState> m_gameboard;
-        unsigned int m_current_player = 0;
+        unsigned m_current_player = 0;
 
         const std::string m_red_color = "\033[1;31m";
         const std::string m_blue_color = "\033[1;34m";
@@ -64,12 +64,12 @@ namespace Hex {
             std::cout << std::endl;
         }
 
-        bool m_place_tile(std::pair<unsigned int, unsigned int> pos) {
+        bool m_place_tile(std::pair<unsigned, unsigned> pos) {
             m_gameboard(pos.first, pos.second) = (TileState)m_current_player;
         }
 
-        std::pair<unsigned int,unsigned int> m_alphnum2num(std::string position) {
-            return std::pair<int,int>(atoi(position.substr(1, position.length()-1).c_str()) - 1, toupper(position[0]) - 65);
+        std::pair<unsigned,unsigned> m_alphnum2num(std::string position) {
+            return std::pair<unsigned,unsigned>(atoi(position.substr(1, position.length()-1).c_str()) - 1, toupper(position[0]) - 65);
         }
 
     public:
