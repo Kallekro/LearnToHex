@@ -10,4 +10,5 @@ include(${SHARK_USE_FILE})
 # Executable
 add_executable(hex main.cpp Hex.hpp)
 set_property(TARGET hex PROPERTY CXX_STANDARD 11)
+set(CMAKE_BUILD_TYPE Debug)
 target_link_libraries(hex ${SHARK_LIBRARIES})
