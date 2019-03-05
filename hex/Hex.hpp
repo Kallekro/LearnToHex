@@ -89,14 +89,13 @@ namespace Hex {
                 if (neighbours[i] != nullptr && neighbours[i]->tileState == tileState) {
                     if (foundNeighbour && neighbours[i]->GetLineSegment() != GetLineSegment()) {
                         // Another neighbour, combine segments
-                        won = neighbours[i]->GetLineSegment()->Merge(GetLineSegment()) || won;
+                        won |= neighbours[i]->GetLineSegment()->Merge(GetLineSegment());
                         ReferLineSegment(neighbours[i]);
-                        GetLineSegment();
                     }
                     else if (!foundNeighbour) {
                         // First neighbour, add to this segment
                         foundNeighbour = true;
-                        won = neighbours[i]->GetLineSegment()->Merge(tile_connected_A, tile_connected_B) || won;
+                        won |= neighbours[i]->GetLineSegment()->Merge(tile_connected_A, tile_connected_B);
                         m_tile_ref = neighbours[i];
                     }
                 }

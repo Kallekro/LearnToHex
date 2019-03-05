@@ -89,7 +89,7 @@ void random_strategy (Hex::Game game) {
             break;
         }
         turn_count++;
-        if (turn_count >= 11*11) {
+        if (turn_count >= game.BOARD_SIZE*game.BOARD_SIZE) {
             std::cout << "Run out of turns, no win?" << std::endl;
             game.print_segments();
             break;
