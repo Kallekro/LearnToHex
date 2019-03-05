@@ -80,13 +80,13 @@ namespace Hex {
                     neighbourLineSegment = neighbours[i]->GetLineSegment();
                     if (foundNeighbour && neighbourLineSegment != myLineSegment) {
                         // Another neighbour, combine segments
-                        won = neighbourLineSegment->Merge(myLineSegment) || won;
+                        won |= neighbourLineSegment->Merge(myLineSegment);
                         ReferLineSegment(neighbours[i]);
                     }
                     else if (!foundNeighbour) {
                         // First neighbour, add to this segment
                         foundNeighbour = true;
-                        won = neighbourLineSegment->Merge(tile_connected_A, tile_connected_B) || won;
+                        won |= neighbourLineSegment->Merge(tile_connected_A, tile_connected_B);
                         m_tile_ref = neighbours[i];
                     }
                 }
