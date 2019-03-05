@@ -12,31 +12,24 @@ namespace Hex {
         Empty = 2
     };
 
-
     class LineSegment {
     public:
-        int count;
         bool Connected_A = false;
         bool Connected_B = false;
         LineSegment (bool _connected_A, bool _connected_B) {
             Connected_A = _connected_A;
             Connected_B = _connected_B;
-            count = 1;
         }
 
         bool Merge(std::shared_ptr<LineSegment> other) {
-            Connected_A |= other->Connected_A;
-            Connected_B |= other->Connected_B;
-            return Connected_A && Connected_B;
+            Merge(other->Connected_A, other->Connected_B);
         }
 
         bool Merge(bool other_A, bool other_B) {
-            Connected_A = Connected_A || other_A;
-            Connected_B = Connected_B || other_B;
+            Connected_A |= other_A;
+            Connected_B |= other_B;
             return Connected_A && Connected_B;
         }
-
-
     };
 
     class Tile {
@@ -71,12 +64,6 @@ namespace Hex {
             m_tile_ref = nullptr;
         }
 
-        void free_segment () {
-            if (m_linesegment != nullptr) {
-                m_linesegment = nullptr;
-            }
-        }
-
         bool PlaceTile(TileState newState, Tile* neighbours[6], int edge_id) {
             tileState = newState;
             //std::cout << edge_id << std::endl;
@@ -85,18 +72,21 @@ namespace Hex {
 
             bool foundNeighbour = false;
             bool won = false;
+            std::shared_ptr<LineSegment> neighbourLineSegment = nullptr;
+            std::shared_ptr<LineSegment> myLineSegment = nullptr;
             for (int i=0; i < 6; i++) {
                 if (neighbours[i] != nullptr && neighbours[i]->tileState == tileState) {
-                    if (foundNeighbour && neighbours[i]->GetLineSegment() != GetLineSegment()) {
+                    myLineSegment = GetLineSegment();
+                    neighbourLineSegment = neighbours[i]->GetLineSegment();
+                    if (foundNeighbour && neighbourLineSegment != myLineSegment) {
                         // Another neighbour, combine segments
-                        won = neighbours[i]->GetLineSegment()->Merge(GetLineSegment()) || won;
+                        won = neighbourLineSegment->Merge(myLineSegment) || won;
                         ReferLineSegment(neighbours[i]);
-                        GetLineSegment();
                     }
                     else if (!foundNeighbour) {
                         // First neighbour, add to this segment
                         foundNeighbour = true;
-                        won = neighbours[i]->GetLineSegment()->Merge(tile_connected_A, tile_connected_B) || won;
+                        won = neighbourLineSegment->Merge(tile_connected_A, tile_connected_B) || won;
                         m_tile_ref = neighbours[i];
                     }
                 }
@@ -219,14 +209,6 @@ namespace Hex {
                 std::cout << std::endl;
             }
             m_printletters(BOARD_SIZE + 2);
-        }
-
-        void free_segments() {
-            for (int i=0; i < BOARD_SIZE; i++) {
-                for (int j=0; j < BOARD_SIZE; j++) {
-                    m_gameboard(i, j).free_segment();
-                }
-            }
         }
 
         void print_segments() {

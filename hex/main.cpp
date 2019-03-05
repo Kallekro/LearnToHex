@@ -71,25 +71,18 @@ void random_strategy (Hex::Game game) {
     int turn_count = 0;
     while (1) {
         do {
-            if (!valid_move) {
-                std::cout << "Invalid move!" << std::endl;
-            }
             auto randint1 = dist(rng_engine);
             auto randint2 = dist(rng_engine);
             random_tile = letters[randint1-1] + std::to_string(randint2);
-            //std::cout << randint1 << ", " << randint2 << std::endl;
-            //std::cout << random_tile << std::endl;
         }
         while (!(valid_move = game.take_turn(random_tile, &won)));
-        game.printhex();
-        //usleep(250000);
-        //game.print_segments();
+        //game.printhex();
         if (won) {
             std::cout << game.CurrentPlayer() << " LOST" << std::endl;
             break;
         }
         turn_count++;
-        if (turn_count >= 11*11) {
+        if (turn_count >= game.BOARD_SIZE * game.BOARD_SIZE) {
             std::cout << "Run out of turns, no win?" << std::endl;
             game.print_segments();
             break;
@@ -194,8 +187,6 @@ int main () {
     //test2();
     //test2B();
 
-
-    game.free_segments();
     return 0;
 
     char input[50];
@@ -218,6 +209,5 @@ int main () {
             break;
         }
     }
-    game.free_segments();
     return 0;
 }
