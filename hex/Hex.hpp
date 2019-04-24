@@ -66,7 +66,6 @@ namespace Hex {
 
         bool PlaceTile(TileState newState, Tile* neighbours[6], int edge_id) {
             tileState = newState;
-            //std::cout << edge_id << std::endl;
             bool tile_connected_A = (edge_id == -1);
             bool tile_connected_B = (edge_id == 1);
 
@@ -184,6 +183,10 @@ namespace Hex {
 
         unsigned CurrentPlayer() {return m_current_player;}
 
+        // TODO:
+        // * rename to takeTurn
+        // * generate feasible moves
+        // * return false if game ended, else true
         bool take_turn(std::string pos, bool* won) {
             std::pair<unsigned,unsigned> pos_pair = m_alphnum2num(pos);
             if (m_gameboard(pos_pair.first, pos_pair.second).tileState != Empty) {
@@ -194,7 +197,7 @@ namespace Hex {
             return true;
         }
 
-        void printhex( ) {
+        void printhex() {
             m_printletters(1);
             for (int i=0; i < BOARD_SIZE; i++) {
                 for (int ii=0; ii < i; ii++) {
@@ -210,7 +213,7 @@ namespace Hex {
             }
             m_printletters(BOARD_SIZE + 2);
         }
-
+/*
         void print_segments() {
             for (int i=0; i < BOARD_SIZE; i++) {
                 for (int j=0; j < BOARD_SIZE; j++) {
@@ -225,6 +228,7 @@ namespace Hex {
                 }
             }
         }
+*/
     };
 }
 

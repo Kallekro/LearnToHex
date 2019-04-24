@@ -84,7 +84,6 @@ void random_strategy (Hex::Game game) {
         turn_count++;
         if (turn_count >= game.BOARD_SIZE * game.BOARD_SIZE) {
             std::cout << "Run out of turns, no win?" << std::endl;
-            game.print_segments();
             break;
         }
     }
@@ -98,24 +97,24 @@ int test() {
     game.take_turn("F6",&won);
     game.take_turn("G6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("F5",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("F4",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("E5",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("I5",&won);
     game.take_turn("I6",&won);
     game.take_turn("I7",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("H6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
 }
 
 void test2() {
@@ -124,32 +123,32 @@ void test2() {
     game.take_turn("D4",&won);
     game.take_turn("D5",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("C7",&won);
     game.take_turn("B8",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("A9",&won);
     game.take_turn("K6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("E6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("F6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("G6",&won);
     game.take_turn("H6",&won);
     game.take_turn("I6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("J6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("D6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     std::cout << won << std::endl;
 }
 
@@ -159,11 +158,11 @@ int test2B () {
     game.take_turn("D4",&won);
     game.take_turn("D5",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("C7",&won);
     game.take_turn("B8",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("E6",&won);
     game.take_turn("F6",&won);
     game.take_turn("G6",&won);
@@ -172,20 +171,57 @@ int test2B () {
     game.take_turn("J6",&won);
     game.take_turn("K6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     game.take_turn("D6",&won);
     game.printhex();
-    game.print_segments();
+    //game.print_segments();
     std::cout << won << std::endl;
+}
+
+void negative_test() {
+    //Hex::Game game(true);
+    //game.take_turn("A2",)
+}
+
+void maximum_linesegments() {
+    Hex::Game game(false);
+    bool won;
+    for (int j=1; j < 12; j+= 2) {
+        for (char i=65; i < 65 + 11; i++) {
+            char move[3];
+            sprintf(move, "%c%d", i, j);
+            game.take_turn(move, &won);
+        }
+    }
+    game.printhex();
+}
+
+void minimum_linesegments() {
+    Hex::Game game(false);
+    bool won;
+    game.take_turn("A1", &won);  game.take_turn("K11", &won);
+    game.take_turn("A2", &won);  game.take_turn("J11", &won);
+    game.take_turn("A3", &won);  game.take_turn("I11", &won);
+    game.take_turn("A4", &won);  game.take_turn("H11", &won);
+    game.take_turn("A5", &won);  game.take_turn("G11", &won);
+    game.take_turn("A6", &won);  game.take_turn("F11", &won);
+    game.take_turn("A7", &won);  game.take_turn("E11", &won);
+    game.take_turn("A8", &won);  game.take_turn("D11", &won);
+    game.take_turn("A9", &won);  game.take_turn("C11", &won);
+    game.take_turn("A10", &won); game.take_turn("B11", &won);
+    game.take_turn("A11", &won); //game.take_turn("K", &won);
+    game.printhex();
 }
 
 int main () {
     Hex::Game game(false);
     //bluewin(game);
-    random_strategy(game);
+    //random_strategy(game);
     //test();
-    //test2();
+    //test2();f
     //test2B();
+    maximum_linesegments();
+    minimum_linesegments();
 
     return 0;
 
@@ -203,7 +239,7 @@ int main () {
         while (!(valid_move = game.take_turn(input, &won)));
 
         game.printhex();
-        game.print_segments();
+        //game.print_segments();
         if (won) {
             std::cout << "Won" << std::endl;
             break;
