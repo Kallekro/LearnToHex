@@ -114,12 +114,62 @@ namespace Hex {
 
         bool m_one_player_debug_mode = false;
 
+        // Variables for termination
+        std::vector<int> m_player_ranks;
+        unsigned int m_next_rank;
+
+        // log for importance sampling
+        struct Log {
+            unsigned current_player;
+            unsigned x;
+            unsigned y;
+            double logprob;
+            unsigned moveAction;
+            shark::blas::matrix<Tile> move_state;
+        };
+        Log m_laststep;
+
+        shark::IntVector m_feasible_move_actions(shark::blas::matrix<Tile> const& field) const {
+            shark::IntVector feasible_moves((BOARD_SIZE*BOARD_SIZE), 1);
+            for (int i=0; i<BOARD_SIZE; i++) {
+                for (int j=0; j<BOARD_SIZE; j++) {
+                    feasible_moves(BOARD_SIZE * i + j) = 0;
+                }
+            }
+            return feasible_moves;
+        }
+        shark::RealVector m_feasible_probabilies(shark::RealVector probs, shark::IntVector const& feasible_moves) const {
+            for (std::size_t i=0; i != probs.size(); i++) {
+                if (!feasible_moves) {
+                    probs(i) = -std::numeric_limits<double>::max();
+                }
+            }
+            probs = exp(probs) - max(probs);
+            probs /= sum(probs);
+            return probs;
+        }
+        unsigned int m_sample_move_action(shark::RealVector const& action_prob)const{
+            double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
+		    double cumulant = 0.0;
+            for (std::size_t i=0; i != action_prob.size(); i++) {
+                cumulant += action_prob(i);
+                if (cumulant > u) {
+                    return i;
+                }
+            }
+            return action_prob.size() - 1;
+        }
+        void m_take_move_action(unsigned move_action) {
+            unsigned x = move_action % BOARD_SIZE;
+            unsigned y = move_action / BOARD_SIZE;
+            m_gameboard(x,y) = m_current_player;
+        }
+
         void m_next_player() {
             if (!m_one_player_debug_mode) {
                 m_current_player = (m_current_player + 1) % 2;
             }
         }
-
         void m_initializeboard() {
             for (int i=0; i < BOARD_SIZE; i++) {
                 for (int j=0; j < BOARD_SIZE; j++) {
@@ -127,7 +177,6 @@ namespace Hex {
                 }
             }
         }
-
         void m_printletters(int start_spaces) {
             for (int i = 0; i < start_spaces; i++) {
                 std::cout << " ";
@@ -137,14 +186,12 @@ namespace Hex {
             }
             std::cout << std::endl;
         }
-
         Tile* m_get_neighbour(int x, int y) {
             if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE || m_gameboard(x,y).tileState == Empty) {
                 return nullptr;
             }
             return &m_gameboard(x,y);
         }
-
         bool m_place_tile(std::pair<unsigned, unsigned> pos, bool* won) {
             Tile* neighbours[6] = {
                 // Upper neigbours
@@ -170,7 +217,6 @@ namespace Hex {
             }
             return m_gameboard(pos.first, pos.second).PlaceTile((TileState)m_current_player, neighbours, edge_id);
         }
-
         std::pair<unsigned,unsigned> m_alphnum2num(std::string position) {
             return std::pair<unsigned,unsigned>(atoi(position.substr(1, position.length()-1).c_str()) - 1, toupper(position[0]) - 65);
         }
@@ -225,6 +271,14 @@ namespace Hex {
                 }
             }
         }
+    };
+
+    class Strategy {
+    public:
+        virtual shark::RealVector getMoveAction(shark::blas::matrix<char>const& field) = 0;
+	    virtual shark::RealVector getRemoveAction(shark::blas::matrix<char>const& field) = 0;
+	    virtual std::size_t numParameters() const = 0;
+	    virtual void setParameters(shark::RealVector const& parameters) = 0;
     };
 }
 
