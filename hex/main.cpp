@@ -166,6 +166,7 @@ int main () {
 
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
+    std::deque<float> last_wins;
 	for (std::size_t t = 0; t != 50000; ++t){
 		//if(t % 1000 == 0)
         //    playGame();
@@ -181,10 +182,20 @@ int main () {
             if (game.getRank(Hex::Blue)) {
                 std::cout << "blue won! hurray" << std::endl;
                 wins_vs_random++;
+                last_wins.push_back(1);
             } else {
                 std::cout << "red won! nay" << std::endl;
+                last_wins.push_back(0);
             }
             std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
+            if (last_wins.size() > 100) {
+                last_wins.pop_front();
+            }
+            float sum = 0;
+            for (int i=0; i < last_wins.size(); i++) {
+                sum += last_wins[i];
+            }
+            std::cout << "blue winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
 
             std::cout <<t<<" "<<cma.sigma()<<std::endl;
         }
