@@ -6,6 +6,7 @@
 
 namespace Hex {
 
+
     static const unsigned BOARD_SIZE = 11;
 
     enum TileState : unsigned {
@@ -113,6 +114,19 @@ namespace Hex {
         virtual void setParameters(shark::RealVector const& parameters) = 0;
     };
 
+    //random strategy for testing
+    class RandomStrategy: public Strategy{
+    public:
+        shark::RealVector getMoveAction(shark::blas::matrix<Tile>const&) override{
+            return shark::RealVector(BOARD_SIZE * BOARD_SIZE, 1.0);
+        }
+
+        std::size_t numParameters() const override{
+            return 1;
+        }
+
+        void setParameters(shark::RealVector const&) override{}
+    };
 
     class Game {
 
@@ -278,7 +292,6 @@ namespace Hex {
                     m_gameboard(i,j).reset();
                 }
             }
-
             // TODO: Choose random starter
             m_activePlayer = 0;
         }
@@ -292,7 +305,9 @@ namespace Hex {
             // find all feasible moves
             auto feasibleMoves = m_feasible_move_actions(m_gameboard);
             // get action preferences from player and transform into probabilities
+            //std::cout << strategy->getMoveAction(m_gameboard) << std::endl;
             shark::RealVector moveProbs = m_feasible_probabilies(strategy->getMoveAction(m_gameboard), feasibleMoves);
+            std::cout << moveProbs << std::endl; 
             // sample an action and take turn
             double moveAction = m_sample_move_action(moveProbs);
             bool won;
@@ -302,6 +317,7 @@ namespace Hex {
                 std::cerr << "exception: " << e.what() << std::endl;
                 std::cout << feasibleMoves << std::endl;
                 std::cout << moveAction << std::endl;
+                std::cout << moveProbs << std::endl;
                 throw(e);
             }
 
@@ -354,20 +370,6 @@ namespace Hex {
             }
         }
 */
-    };
-
-    //random strategy for testing
-    class RandomStrategy: public Strategy{
-    public:
-        shark::RealVector getMoveAction(shark::blas::matrix<Tile>const&) override{
-            return shark::RealVector(BOARD_SIZE * BOARD_SIZE, 1.0);
-        }
-
-        std::size_t numParameters() const override{
-            return 1;
-        }
-
-        void setParameters(shark::RealVector const&) override{}
     };
 }
 
