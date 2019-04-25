@@ -39,6 +39,19 @@ namespace Hex {
         Tile* m_tile_ref;
     public:
         TileState tileState;
+
+        Tile () {
+            tileState = Empty;
+            m_linesegment = nullptr;
+            m_tile_ref = nullptr;
+        }
+
+        void reset() {
+            tileState = Empty;
+            m_linesegment = nullptr;
+            m_tile_ref = nullptr;
+        }
+
         std::shared_ptr<LineSegment> GetLineSegment() {
             if (m_linesegment != nullptr) {
                 return m_linesegment;
@@ -59,12 +72,6 @@ namespace Hex {
         }
 
         bool OwnsLine() { return m_linesegment != nullptr; }
-
-        Tile () {
-            tileState = Empty;
-            m_linesegment = nullptr;
-            m_tile_ref = nullptr;
-        }
 
         bool PlaceTile(TileState newState, Tile* neighbours[6], int edge_id) {
             tileState = newState;
@@ -101,7 +108,7 @@ namespace Hex {
 
     class Strategy{
     public:
-        virtual shark::RealVector getMoveAction(shark::blas::matrix<char>const& field) = 0;
+        virtual shark::RealVector getMoveAction(shark::blas::matrix<Tile>const& field) = 0;
         virtual std::size_t numParameters() const = 0;
         virtual void setParameters(shark::RealVector const& parameters) = 0;
     };
@@ -142,7 +149,9 @@ namespace Hex {
             shark::IntVector feasible_moves((BOARD_SIZE*BOARD_SIZE), 1);
             for (int i=0; i<BOARD_SIZE; i++) {
                 for (int j=0; j<BOARD_SIZE; j++) {
-                    feasible_moves(BOARD_SIZE * i + j) = 0;
+                    if (m_gameboard(i, j).tileState != Empty) {
+                        feasible_moves(BOARD_SIZE * i + j) = 0;
+                    }
                 }
             }
             return feasible_moves;
@@ -153,10 +162,11 @@ namespace Hex {
                     probs(i) = -std::numeric_limits<double>::max();
                 }
             }
-            probs = exp(probs) - max(probs);
+            probs = exp(probs - max(probs));
             probs /= sum(probs);
             return probs;
         }
+
         unsigned int m_sample_move_action(shark::RealVector const& action_prob)const{
             double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
 		    double cumulant = 0.0;
@@ -169,10 +179,11 @@ namespace Hex {
             return action_prob.size() - 1;
         }
 
-        void m_take_move_action(unsigned move_action) {
+        bool m_take_move_action(unsigned move_action) {
             unsigned x = move_action % BOARD_SIZE;
             unsigned y = move_action / BOARD_SIZE;
-            m_gameboard(x,y) = m_activePlayer;
+            std::pair<unsigned,unsigned> pos (y, x);
+            return m_place_tile(pos);
         }
 
         void m_next_player() {
@@ -187,32 +198,19 @@ namespace Hex {
                 }
             }
         }
-        void m_printletters(int start_spaces) {
-            for (int i = 0; i < start_spaces; i++) {
-                std::cout << " ";
-            }
-            for (char i = 65; i < 65+BOARD_SIZE; i++) {
-                std::cout << m_red_color << i << m_reset_color << " ";
-            }
-        }
+        //shark::IntVector feasibleMoveActions(shark::blas::matrix<Tile> const &field) {
+        //    shark::IntVector feasible(BOARD_SIZE * BOARD_SIZE, 1);
+        //    return feasible;
+        //}
+//
+        //shark::RealVector toFeasibleProbabilities(shark::RealVector probs, shark::IntVector const& feasible) const {
+        //    return probs;
+        //}
+//
+        //unsigned sampleAction(shark::RealVector const& actionProb) const {
+        //    return actionProb.size() - 1;
+        //}
 
-        shark::IntVector feasibleMoveActions(shark::blas::matrix<Tile> const &field) {
-            shark::IntVector feasible(BOARD_SIZE * BOARD_SIZE, 1);
-            return feasible;
-        }
-
-        shark::RealVector toFeasibleProbabilities(shark::RealVector probs, shark::IntVector const& feasible) const {
-            return probs;
-        }
-
-        unsigned sampleAction(shark::RealVector const& actionProb) const {
-            return actionProb.size() - 1;
-        }
-
-        bool takeMoveAction(unsigned moveAction) {
-            std::pair<unsigned, unsigned> pos (0, 0);
-            return m_place_tile(pos);
-        }
         Tile* m_get_neighbour(int x, int y) {
             if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE || m_gameboard(x,y).tileState == Empty) {
                 return nullptr;
@@ -221,6 +219,9 @@ namespace Hex {
         }
 
         bool m_place_tile(std::pair<unsigned, unsigned> pos) {
+            if (m_gameboard(pos.first, pos.second).tileState != Empty) {
+                throw std::invalid_argument("double place!");
+            }
             Tile* neighbours[6] = {
                 // Upper neigbours
                 m_get_neighbour(pos.first,   pos.second-1),
@@ -245,18 +246,21 @@ namespace Hex {
             }
             return m_gameboard(pos.first, pos.second).PlaceTile((TileState)m_activePlayer, neighbours, edge_id);
         }
+
         std::pair<unsigned,unsigned> m_alphnum2num(std::string position) {
             return std::pair<unsigned,unsigned>(atoi(position.substr(1, position.length()-1).c_str()) - 1, toupper(position[0]) - 65);
         }
 
-        void m_printletters(int start_spaces) {
+        std::string m_printletters(int start_spaces) {
+            std::string resStr("");
             for (int i = 0; i < start_spaces; i++) {
-                std::cout << " ";
+                resStr += " ";
             }
             for (char i = 65; i < 65+BOARD_SIZE; i++) {
-                std::cout << m_red_color << i << m_reset_color << " ";
+                resStr += m_red_color + i + m_reset_color + " ";
             }
-            std::cout << std::endl;
+            resStr += '\n';
+            return resStr;
         }
 
     public:
@@ -267,6 +271,18 @@ namespace Hex {
             m_one_player_debug_mode = test_mode;
         }
 
+        void reset() {
+            // reset board
+            for (std::size_t i = 0; i < BOARD_SIZE; i++) {
+                for (std::size_t j = 0; j < BOARD_SIZE; j++) {
+                    m_gameboard(i,j).reset();
+                }
+            }
+
+            // TODO: Choose random starter
+            m_activePlayer = 0;
+        }
+
         unsigned ActivePlayer() {return m_activePlayer;}
 
         bool takeTurn(std::vector<Strategy*> const& strategies) {
@@ -274,12 +290,20 @@ namespace Hex {
             // get player information
             auto strategy = strategies[m_activePlayer];
             // find all feasible moves
-            auto feasibleMoves = feasibleMoveActions(m_gameboard);
+            auto feasibleMoves = m_feasible_move_actions(m_gameboard);
             // get action preferences from player and transform into probabilities
-            shark::RealVector moveProbs = toFeasibleProbabilities(strategy->getMoveAction(m_gameboard), feasibleMoves);
+            shark::RealVector moveProbs = m_feasible_probabilies(strategy->getMoveAction(m_gameboard), feasibleMoves);
             // sample an action and take turn
-            double moveAction = sampleAction(moveProbs);
-            bool won = takeMoveAction(moveAction);
+            double moveAction = m_sample_move_action(moveProbs);
+            bool won;
+            try {
+                won = !m_take_move_action(moveAction);
+            } catch (std::invalid_argument& e) {
+                std::cerr << "exception: " << e.what() << std::endl;
+                std::cout << feasibleMoves << std::endl;
+                std::cout << moveAction << std::endl;
+                throw(e);
+            }
 
             return won;
         }
@@ -295,22 +319,25 @@ namespace Hex {
             return true;
         }
 
-        void printhex() {
-            m_printletters(1);
+        std::string asciiState() {
+            std::string resStr("");
+            resStr += m_printletters(1);
             for (int i=0; i < BOARD_SIZE; i++) {
                 for (int ii=0; ii < i; ii++) {
                     if (ii == 8) { continue; }
-                    std::cout << " ";
+                    resStr += " ";
                 }
-                std::cout << m_blue_color << i+1 << m_reset_color;
+                resStr += m_blue_color + std::to_string(i+1) + m_reset_color;
                 for (int j=0; j < BOARD_SIZE; j++) {
-                    std::cout << " " << m_hexes[m_gameboard(i, j).tileState];
+                    resStr += " " + m_hexes[m_gameboard(i, j).tileState];
                 }
-                std::cout << " " << m_blue_color << i+1 << m_reset_color;
-                std::cout << std::endl;
+                resStr +=  " " + m_blue_color + std::to_string(i+1) + m_reset_color;
+                resStr += '\n';
             }
-            m_printletters(BOARD_SIZE + 2);
+            resStr += m_printletters(BOARD_SIZE + 2);
+            return resStr;
         }
+
 /*
         void print_segments() {
             for (int i=0; i < BOARD_SIZE; i++) {
@@ -332,23 +359,15 @@ namespace Hex {
     //random strategy for testing
     class RandomStrategy: public Strategy{
     public:
-        shark::RealVector getMoveAction(shark::blas::matrix<char>const&) override{
+        shark::RealVector getMoveAction(shark::blas::matrix<Tile>const&) override{
             return shark::RealVector(BOARD_SIZE * BOARD_SIZE, 1.0);
         }
 
         std::size_t numParameters() const override{
-            return 0;
+            return 1;
         }
 
         void setParameters(shark::RealVector const&) override{}
-    };
-
-    class Strategy {
-    public:
-        virtual shark::RealVector getMoveAction(shark::blas::matrix<char>const& field) = 0;
-	    virtual shark::RealVector getRemoveAction(shark::blas::matrix<char>const& field) = 0;
-	    virtual std::size_t numParameters() const = 0;
-	    virtual void setParameters(shark::RealVector const& parameters) = 0;
     };
 }
 
