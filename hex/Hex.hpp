@@ -5,9 +5,7 @@
 #include <memory>
 
 namespace Hex {
-
-
-    static const unsigned BOARD_SIZE = 11;
+    static const unsigned BOARD_SIZE = 7;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -132,6 +130,7 @@ namespace Hex {
 
 	    shark::blas::matrix<Tile> m_gameboard;
         unsigned m_activePlayer = 0;
+        unsigned m_playerWon = -1;
 
         const std::string m_red_color = "\033[1;31m";
         const std::string m_blue_color = "\033[1;34m";
@@ -293,7 +292,8 @@ namespace Hex {
                 }
             }
             // TODO: Choose random starter
-            m_activePlayer = 0;
+            m_activePlayer = 1;
+            m_playerWon = -1;
         }
 
         unsigned ActivePlayer() {return m_activePlayer;}
@@ -305,14 +305,12 @@ namespace Hex {
             // find all feasible moves
             auto feasibleMoves = m_feasible_move_actions(m_gameboard);
             // get action preferences from player and transform into probabilities
-            //std::cout << strategy->getMoveAction(m_gameboard) << std::endl;
             shark::RealVector moveProbs = m_feasible_probabilies(strategy->getMoveAction(m_gameboard), feasibleMoves);
-            std::cout << moveProbs << std::endl; 
             // sample an action and take turn
             double moveAction = m_sample_move_action(moveProbs);
             bool won;
             try {
-                won = !m_take_move_action(moveAction);
+                won = m_take_move_action(moveAction);
             } catch (std::invalid_argument& e) {
                 std::cerr << "exception: " << e.what() << std::endl;
                 std::cout << feasibleMoves << std::endl;
@@ -320,8 +318,10 @@ namespace Hex {
                 std::cout << moveProbs << std::endl;
                 throw(e);
             }
-
-            return won;
+            if (won) {
+                m_playerWon = m_activePlayer;
+            }
+            return !won;
         }
 
         // Manual turn for playing the game without RL strategy
@@ -333,6 +333,10 @@ namespace Hex {
             *won = m_place_tile(pos_pair);
             m_next_player();
             return true;
+        }
+
+        int getRank(std::size_t player)const {
+            return player == m_playerWon ? 1 : 0;
         }
 
         std::string asciiState() {

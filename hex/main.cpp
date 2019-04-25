@@ -60,8 +60,8 @@ public:
 		}
 
 		//reward of player 1
-		//double r = game.getRank(0);
-		return 0;
+		double r = game.getRank(0);
+		return r;
 		//importance weighted reward
 		//~ double y = 2*r - 1;
 		//~ return 1/(1+std::exp(y*logW));
@@ -73,14 +73,14 @@ private:
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer;
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer2;
 	Conv2DModel<RealVector> m_moveOut;
-	
+
 	ConcatenatedModel<RealVector> m_moveNet ;
 
     unsigned m_color;
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({11,11, 3},{10,3,3});
+		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 3},{10,3,3});
 		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,3,3});
 		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,3,3});
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
@@ -91,23 +91,25 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((11*11*3),0.0);
-		for(int i = 0; i != 11; ++i){
-			for(int j = 0; j != 11; ++j){
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*3),0.0);
+		for(int i = 0; i != Hex::BOARD_SIZE; ++i){
+			for(int j = 0; j != Hex::BOARD_SIZE; ++j){
 				if(field(i,j).tileState == m_color){
-					inputs(3*(i*11+j)) = 1.0;
+					inputs(3*(i*Hex::BOARD_SIZE+j)) = 1.0;
 				}
 				else if(field(i,j).tileState == Hex::Empty){
-					inputs(3*(i*11+j)+1) = 1.0;
+					inputs(3*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
 				}
 				else {
-					inputs(3*(i*11+j)+2) = 1.0;
+					inputs(3*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
 				}
 			}
 		}
 		//Get raw response for everything
 		RealVector response = m_moveNet(inputs);
-        response(120) = 0.0;
+
+        // hmm
+        response(Hex::BOARD_SIZE*Hex::BOARD_SIZE - 1) = 0.0;
 
 		////return only the output at player position
 		//RealVector output(121, 1.0);
@@ -115,13 +117,13 @@ public:
 			//output(i) = response(7*(y*7+x) + i);
 		//}
 		return response;
-		
+
 	}
-	
+
 	std::size_t numParameters() const override{
 		return m_moveNet.numberOfParameters();
 	}
-	
+
 	void setParameters(shark::RealVector const& parameters) override{
 		auto p1 = subrange(parameters, 0, m_moveNet.numberOfParameters());
 		m_moveNet.setParameterVector(p1);
@@ -141,9 +143,9 @@ int main () {
     NetworkStrategy player2;
     player1.setColor(0);
     player2.setColor(1);
-    
+
     //Hex::RandomStrategy player1;
-    //Hex::RandomStrategy player2;
+    Hex::RandomStrategy random_player;
 
     SelfPlayTwoPlayer<Hex::Game, NetworkStrategy> objective(game, player1);
     SelfRLCMA cma;
@@ -162,17 +164,33 @@ int main () {
         std::cout << game.asciiState() << std::endl;
     };
 
-    cma.step(objective);
-    std::cout<<"PLAYED GAME" << std::endl;
-    //cma.step(objective);
-	//for (std::size_t t = 0; t != 50000; ++t){
-		////if(t % 10 == 0)
-			//std::cout <<t<<" "<<cma.sigma()<<std::endl;
+    float wins_vs_random = 0;
+    float games_vs_random_played = 0;
+	for (std::size_t t = 0; t != 50000; ++t){
 		//if(t % 1000 == 0)
-			//playGame();
-        //game.reset();
-		//cma.step(objective);
-	//}
+        //    playGame();
+        if(t % 10 == 0) {
+            game.reset();
+            //std::cout << game.asciiState() << std::endl;
+            while (game.takeTurn({&player1, &random_player})) {
+                //std::cout << game.asciiState() << std::endl;
+            }
+            std::cout << game.asciiState() << std::endl;
+            std::cout << "end of random game" << std::endl;
+            games_vs_random_played++;
+            if (game.getRank(Hex::Blue)) {
+                std::cout << "blue won! hurray" << std::endl;
+                wins_vs_random++;
+            } else {
+                std::cout << "red won! nay" << std::endl;
+            }
+            std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
+
+            std::cout <<t<<" "<<cma.sigma()<<std::endl;
+        }
+        game.reset();
+		cma.step(objective);
+	}
 
 	std::cout<<"optimization done. example game"<<std::endl;
 	player1.setParameters(cma.generatePolicy());
