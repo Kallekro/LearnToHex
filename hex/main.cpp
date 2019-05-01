@@ -79,8 +79,6 @@ private:
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer;
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer2;
     Conv2DModel<RealVector, TanhNeuron> m_moveLayer3;
-    Conv2DModel<RealVector, TanhNeuron> m_moveLayer4;
-    Conv2DModel<RealVector, TanhNeuron> m_moveLayer5;
 	Conv2DModel<RealVector> m_moveOut;
 
 	ConcatenatedModel<RealVector> m_moveNet ;
@@ -92,10 +90,8 @@ public:
 		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4},{10,4,4});
 		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,4,4});
 		m_moveLayer3.setStructure(m_moveLayer2.outputShape(),{20,4,4});
-		m_moveLayer4.setStructure(m_moveLayer3.outputShape(),{20,4,4});
-		m_moveLayer5.setStructure(m_moveLayer4.outputShape(),{20,4,4});
-		m_moveOut.setStructure(m_moveLayer5.outputShape(), {1,4,4});
-		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveLayer3 >> m_moveLayer4 >> m_moveLayer5 >> m_moveOut;
+		m_moveOut.setStructure(m_moveLayer3.outputShape(), {1,4,4});
+		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveLayer3 >> m_moveOut;
 	}
     void setColor(unsigned color) {
         m_color = color;
@@ -118,10 +114,11 @@ public:
 				}
                 else if (( m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
                         || m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1)) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
 				}
 			}
 		}
+
 		//Get raw response for everything
 		RealVector response = m_moveNet(inputs);
 
