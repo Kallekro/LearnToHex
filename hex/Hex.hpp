@@ -195,6 +195,9 @@ namespace Hex {
             unsigned x = move_action % BOARD_SIZE;
             unsigned y = move_action / BOARD_SIZE;
             std::pair<unsigned,unsigned> pos (y, x);
+            if (m_activePlayer == 1) {
+                std::pair<unsigned,unsigned> pos (x, y);
+            }
             return m_place_tile(pos);
         }
 
@@ -351,16 +354,16 @@ namespace Hex {
 
         //relative frequency of the last action as if played under a different pair of strategies
         double logImportanceWeight(std::vector<Strategy*> const& strategies){
-	
-	
+
+
 	        auto strategy = strategies[m_lastStep.activePlayer];
 	        auto feasibleMoves = m_feasible_move_actions(m_lastStep.moveState);
 	        shark::RealVector moveProbs =m_feasible_probabilies(strategy->getMoveAction(m_lastStep.moveState), feasibleMoves);
-	
+
 	        double logProb = std::log(moveProbs(m_lastStep.moveAction));
-	
+
 	        return logProb - m_lastStep.logProb;
-	
+
         }
         int getRank(std::size_t player)const {
             return player == m_playerWon ? 1 : 0;

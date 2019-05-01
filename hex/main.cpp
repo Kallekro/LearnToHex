@@ -102,18 +102,23 @@ public:
 		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*4),0.0);
 		for(int i = 0; i != Hex::BOARD_SIZE; ++i){
 			for(int j = 0; j != Hex::BOARD_SIZE; ++j){
+                if (m_color == Hex::Red) {
+                    int tmp = i;
+                    i = j;
+                    j = tmp;
+                }
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
 					inputs(4*(i*Hex::BOARD_SIZE+j)) = 1.0;
 				}
 				else if(field(i,j).tileState != Hex::Empty){ // Channel where other players tiles are 1
 					inputs(4*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
 				}
-				else if (( m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        || m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1)) {
+				else if (  (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
 				}
-                else if (( m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        || m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1)) {
+                else if (  (m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
 				}
 			}
@@ -186,9 +191,9 @@ int main () {
         //    playGame();
         if(t % 10 == 0) {
             game.reset();
-            //std::cout << game.asciiState() << std::endl;
+            std::cout << game.asciiState() << std::endl;
             while (game.takeTurn({&player1, &random_player})) {
-                //std::cout << game.asciiState() << std::endl;
+                std::cout << game.asciiState() << std::endl;
             }
             std::cout << game.asciiState() << std::endl;
             std::cout << "end of random game" << std::endl;
