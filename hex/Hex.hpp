@@ -132,6 +132,7 @@ namespace Hex {
         unsigned m_activePlayer = 0;
         unsigned m_playerWon = -1;
 
+
         const std::string m_red_color = "\033[1;31m";
         const std::string m_blue_color = "\033[1;34m";
         const std::string m_reset_color = "\033[0;0m";
@@ -209,18 +210,6 @@ namespace Hex {
                 }
             }
         }
-        //shark::IntVector feasibleMoveActions(shark::blas::matrix<Tile> const &field) {
-        //    shark::IntVector feasible(BOARD_SIZE * BOARD_SIZE, 1);
-        //    return feasible;
-        //}
-//
-        //shark::RealVector toFeasibleProbabilities(shark::RealVector probs, shark::IntVector const& feasible) const {
-        //    return probs;
-        //}
-//
-        //unsigned sampleAction(shark::RealVector const& actionProb) const {
-        //    return actionProb.size() - 1;
-        //}
 
         Tile* m_get_neighbour(int x, int y) {
             if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE || m_gameboard(x,y).tileState == Empty) {
@@ -277,10 +266,13 @@ namespace Hex {
     public:
         typedef Hex::Strategy Strategy;
 
+        unsigned turns_taken = 0;
+
         Game(bool test_mode) : m_gameboard(BOARD_SIZE, BOARD_SIZE) {
             m_initializeboard();
             m_one_player_debug_mode = test_mode;
         }
+
 
         void reset() {
             // reset board
@@ -292,6 +284,23 @@ namespace Hex {
             // TODO: Choose random starter
             m_activePlayer = 1;
             m_playerWon = -1;
+            turns_taken = 0;
+        }
+
+        void FlipBoard() {
+            int ri = BOARD_SIZE-1;
+            int rj = BOARD_SIZE-1;
+            for (int i=0; i < BOARD_SIZE; i++) {
+                rj = BOARD_SIZE-1;
+                for (int j=0; j < BOARD_SIZE; j++) {
+                    Tile tmptile = m_gameboard(i,j);
+
+                    m_gameboard(i,j) = m_gameboard(ri, rj);
+                    m_gameboard(ri,rj) = tmptile;
+                    rj--;
+                }
+                ri--;
+            }
         }
 
         unsigned ActivePlayer() {return m_activePlayer;}
@@ -302,6 +311,7 @@ namespace Hex {
             m_lastStep.moveState = m_gameboard;
             m_lastStep.activePlayer = m_activePlayer;
 
+            turns_taken++;
             // get player information
             auto strategy = strategies[m_activePlayer];
             // find all feasible moves
@@ -374,23 +384,6 @@ namespace Hex {
             resStr += m_printletters(BOARD_SIZE + 2);
             return resStr;
         }
-
-/*
-        void print_segments() {
-            for (int i=0; i < BOARD_SIZE; i++) {
-                for (int j=0; j < BOARD_SIZE; j++) {
-                    if (m_gameboard(i, j).OwnsLine()) {
-                        if (m_gameboard(i,j).tileState == Red) {
-                            std::cout << "Red " << std::endl;
-                        }
-                        else {
-                            std::cout << "Blue " << std::endl;
-                        }
-                    }
-                }
-            }
-        }
-*/
     };
 }
 
