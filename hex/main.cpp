@@ -54,17 +54,16 @@ public:
 
 		//simulate
 		game.reset();
-		//~ double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
-			//~ logW += game.logImportanceWeight({&strategy1, &strategy0});
-		}
+            double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
+            if (u > 0.5) {
+                game.FlipBoard();
+            }
+        }
 
 		//reward of player 1
 		double r = game.getRank(0);
 		return r;
-		//importance weighted reward
-		//~ double y = 2*r - 1;
-		//~ return 1/(1+std::exp(y*logW));
 	}
 };
 
@@ -72,6 +71,9 @@ class NetworkStrategy: public Hex::Strategy{
 private:
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer;
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer2;
+    Conv2DModel<RealVector, TanhNeuron> m_moveLayer3;
+    Conv2DModel<RealVector, TanhNeuron> m_moveLayer4;
+    Conv2DModel<RealVector, TanhNeuron> m_moveLayer5;
 	Conv2DModel<RealVector> m_moveOut;
 
 	ConcatenatedModel<RealVector> m_moveNet ;
@@ -80,10 +82,13 @@ private:
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 3},{10,3,3});
-		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,3,3});
-		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,3,3});
-		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
+		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4},{10,4,4});
+		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,4,4});
+		m_moveLayer3.setStructure(m_moveLayer2.outputShape(),{20,4,4});
+		m_moveLayer4.setStructure(m_moveLayer3.outputShape(),{20,4,4});
+		m_moveLayer5.setStructure(m_moveLayer4.outputShape(),{20,4,4});
+		m_moveOut.setStructure(m_moveLayer5.outputShape(), {1,4,4});
+		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveLayer3 >> m_moveLayer4 >> m_moveLayer5 >> m_moveOut;
 	}
     void setColor(unsigned color) {
         m_color = color;
@@ -91,31 +96,28 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*3),0.0);
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*4),0.0);
 		for(int i = 0; i != Hex::BOARD_SIZE; ++i){
 			for(int j = 0; j != Hex::BOARD_SIZE; ++j){
-				if(field(i,j).tileState == m_color){
-					inputs(3*(i*Hex::BOARD_SIZE+j)) = 1.0;
+				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
+					inputs(4*(i*Hex::BOARD_SIZE+j)) = 1.0;
 				}
-				else if(field(i,j).tileState == Hex::Empty){
-					inputs(3*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+				else if(field(i,j).tileState != Hex::Empty){ // Channel where other players tiles are 1
+					inputs(4*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
 				}
-				else {
-					inputs(3*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+				else if (( m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        || m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1)) {
+					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+				}
+                else if (( m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        || m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1)) {
+					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
 				}
 			}
 		}
 		//Get raw response for everything
 		RealVector response = m_moveNet(inputs);
 
-        // hmm
-        response(Hex::BOARD_SIZE*Hex::BOARD_SIZE - 1) = 0.0;
-
-		////return only the output at player position
-		//RealVector output(121, 1.0);
-		//for(std::size_t i = 0; i != 7; ++i){
-			//output(i) = response(7*(y*7+x) + i);
-		//}
 		return response;
 
 	}
@@ -163,7 +165,7 @@ int main () {
         }
         std::cout << game.asciiState() << std::endl;
     };
-
+#if 1
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
@@ -180,11 +182,11 @@ int main () {
             std::cout << "end of random game" << std::endl;
             games_vs_random_played++;
             if (game.getRank(Hex::Blue)) {
-                std::cout << "blue won! hurray" << std::endl;
+                std::cout << "Network strategy (blue) won!" << std::endl;
                 wins_vs_random++;
                 last_wins.push_back(1);
             } else {
-                std::cout << "red won! nay" << std::endl;
+                std::cout << "Random strategy (red) won!" << std::endl;
                 last_wins.push_back(0);
             }
             std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
@@ -212,43 +214,20 @@ int main () {
 		std::cout<<game.asciiState()<<std::endl;
 	}
 
-    //double r = game.get_rank(0);
-    /*
-    //bluewin(game);
-    //random_strategy(game);
-    //test();
-    //test2();f
-    //test2B();
-    //maximum_linesegments();
-    //minimum_linesegments();
-
     return 0;
-
-    char input[50];
-    bool won;
-    bool valid_move = true;
-    while (1) {
-        do {
-            if (!valid_move) {
-                std::cout << "Invalid move!" << std::endl;
-            }
-            std::cout << "Turn: ";
-            std::cin >> input;
-        }
-        while (!(valid_move = game.take_turn(input, &won)));
-
-        game.printhex();
-        //game.print_segments();
-        if (won) {
-            std::cout << "Won" << std::endl;
-            break;
-        }
+#else
+    char buf[10];
+    buf[0] = '\0';
+    while (strcmp(buf, "q") != 0) {
+        cma.step(objective);
+        std::cout << "Enter anything to update step" << std::endl;
+        std::cin >> buf;
     }
-    return 0;
 
-    */
+#endif
+
+
 }
-
 /*
 void random_strategy (Hex::Game game) {
 
