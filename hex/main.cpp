@@ -54,19 +54,21 @@ public:
 
 		//simulate
 		game.reset();
-		//~ double logW = 0.0;
+		double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
-			//~ logW += game.logImportanceWeight({&strategy1, &strategy0});
+			logW += game.logImportanceWeight({&strategy1, &strategy0});
 		}
 
 		//reward of player 1
 		double r = game.getRank(0);
-		return r;
+		//return r;
 		//importance weighted reward
-		//~ double y = 2*r - 1;
-		//~ return 1/(1+std::exp(y*logW));
+		double y = 2*r - 1;
+		return 1/(1+std::exp(y*logW));
 	}
 };
+
+
 
 class NetworkStrategy: public Hex::Strategy{
 private:
@@ -109,7 +111,7 @@ public:
 		RealVector response = m_moveNet(inputs);
 
         // hmm
-        response(Hex::BOARD_SIZE*Hex::BOARD_SIZE - 1) = 0.0;
+        //response(Hex::BOARD_SIZE*Hex::BOARD_SIZE - 1) = 0.0;
 
 		////return only the output at player position
 		//RealVector output(121, 1.0);
