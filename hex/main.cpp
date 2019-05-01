@@ -55,8 +55,6 @@ public:
 		//simulate
 		game.reset();
 
-		//reward of player 1
-		double r = game.getRank(0);
 		//importance weighted reward
 		double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
@@ -66,6 +64,7 @@ public:
                 game.FlipBoard();
             }
         }
+		double r = game.getRank(0);
 		double y = 2*r - 1;
 		return 1/(1+std::exp(y*logW));
 	}
