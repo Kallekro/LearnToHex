@@ -54,18 +54,24 @@ public:
 
 		//simulate
 		game.reset();
+
+		//reward of player 1
+		double r = game.getRank(0);
+		//importance weighted reward
+		double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
+			logW += game.logImportanceWeight({&strategy1, &strategy0});
             double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
             if (u > 0.5) {
                 game.FlipBoard();
             }
         }
-
-		//reward of player 1
-		double r = game.getRank(0);
-		return r;
+		double y = 2*r - 1;
+		return 1/(1+std::exp(y*logW));
 	}
 };
+
+
 
 class NetworkStrategy: public Hex::Strategy{
 private:
@@ -115,6 +121,14 @@ public:
 		//Get raw response for everything
 		RealVector response = m_moveNet(inputs);
 
+        // hmm
+        //response(Hex::BOARD_SIZE*Hex::BOARD_SIZE - 1) = 0.0;
+
+		////return only the output at player position
+		//RealVector output(121, 1.0);
+		//for(std::size_t i = 0; i != 7; ++i){
+			//output(i) = response(7*(y*7+x) + i);
+		//}
 		return response;
 
 	}

@@ -150,14 +150,12 @@ namespace Hex {
 
         // log for importance sampling
         struct Log {
-            unsigned current_player;
-            unsigned x;
-            unsigned y;
-            double logprob;
+            unsigned activePlayer;
+            double logProb;
             unsigned moveAction;
-            shark::blas::matrix<Tile> move_state;
+            shark::blas::matrix<Tile> moveState;
         };
-        Log m_laststep;
+        Log m_lastStep;
 
         shark::IntVector m_feasible_move_actions(shark::blas::matrix<Tile> const& field) const {
             shark::IntVector feasible_moves((BOARD_SIZE*BOARD_SIZE), 1);
@@ -309,6 +307,10 @@ namespace Hex {
 
         bool takeTurn(std::vector<Strategy*> const& strategies) {
             m_next_player();
+            //logging
+            m_lastStep.moveState = m_gameboard;
+            m_lastStep.activePlayer = m_activePlayer;
+
             turns_taken++;
             // get player information
             auto strategy = strategies[m_activePlayer];
@@ -331,6 +333,8 @@ namespace Hex {
             if (won) {
                 m_playerWon = m_activePlayer;
             }
+            		m_lastStep.moveAction = moveAction;
+		    m_lastStep.logProb = std::log(moveProbs(moveAction));
             return !won;
         }
 
@@ -345,6 +349,19 @@ namespace Hex {
             return true;
         }
 
+        //relative frequency of the last action as if played under a different pair of strategies
+        double logImportanceWeight(std::vector<Strategy*> const& strategies){
+	
+	
+	        auto strategy = strategies[m_lastStep.activePlayer];
+	        auto feasibleMoves = m_feasible_move_actions(m_lastStep.moveState);
+	        shark::RealVector moveProbs =m_feasible_probabilies(strategy->getMoveAction(m_lastStep.moveState), feasibleMoves);
+	
+	        double logProb = std::log(moveProbs(m_lastStep.moveAction));
+	
+	        return logProb - m_lastStep.logProb;
+	
+        }
         int getRank(std::size_t player)const {
             return player == m_playerWon ? 1 : 0;
         }

@@ -141,8 +141,8 @@ public:
 	}
 
 	double sigma() const {
-		//~ return std::sqrt(m_var);
-		return m_rate;
+		return std::sqrt(m_var);
+		//return m_rate;
 	}
 
 	RealVector generatePolicy()const{
@@ -159,9 +159,9 @@ protected:
 			RealVector& z = m_offspring[i].chromosome();
 			RealVector& x = m_offspring[i].searchPoint();
 			noalias(z) = remora::normal(random::globalRng(), m_numberOfVariables, 0.0, 1.0, remora::cpu_tag());
-			//~ m_A.prod(x,z);
-			//~ noalias(x) = m_mean + sigma * x;
-			noalias(x) = m_mean + sigma * z;
+			m_A.prod(x,z);
+			noalias(x) = m_mean + sigma * x;
+			//noalias(x) = m_mean + sigma * z;
 		};
 		
 		threading::parallelND(m_offspring.size(), 0, sampler,threading::globalThreadPool());
@@ -205,10 +205,10 @@ protected:
 		double deviationStepLen = norm_sqr(m_path)/m_numberOfVariables - 1.0;
 		
 		//~ //update covariance matrix
-		//~ RealVector y =dMean/std::sqrt(m_var);
-		//~ noalias(m_v) = (1. - cV ) * m_v + std::sqrt( cV * (2. - cV) * muEff) * y;
-		//~ m_A.setNsteps(std::size_t(3*m_lambda / m_rate));//the larger the noise the more spread out the steps should be
-		//~ m_A.update(m_v);
+		RealVector y =dMean/std::sqrt(m_var);
+		noalias(m_v) = (1. - cV ) * m_v + std::sqrt( cV * (2. - cV) * muEff) * y;
+		m_A.setNsteps(std::size_t(3*m_lambda / m_rate));//the larger the noise the more spread out the steps should be
+		m_A.update(m_v);
 		
 		//performing steps in variables
 		noalias(m_mean) +=  m_rate * dMean;
@@ -244,9 +244,9 @@ protected:
 		m_var = sqr(initialSigma);
 		
 		//~ //variables for covariance matrix
-		//~ m_v =  remora::normal(random::globalRng(), m_numberOfVariables, 0.0, 1.0, remora::cpu_tag())/m_numberOfVariables;
-		//~ double c1 = 0.01/m_numberOfVariables;
-		//~ m_A.init(c1,m_numberOfVariables,3*lambda,lambda);
+		m_v =  remora::normal(random::globalRng(), m_numberOfVariables, 0.0, 1.0, remora::cpu_tag())/m_numberOfVariables;
+		double c1 = 0.01/m_numberOfVariables;
+		m_A.init(c1,m_numberOfVariables,3*lambda,lambda);
 		
 		//variables for noise estimation
 		m_ztest = 10;
@@ -275,8 +275,8 @@ private:
 	RealVector m_mean;
 	
 	//~ //Variables governing covarianz matrix update
-	//~ detail::IncrementalCholeskyMatrix m_A;
-	//~ RealVector m_v;
+	detail::IncrementalCholeskyMatrix m_A;
+	RealVector m_v;
 	
 	//Variables governing step size update
 	RealVector m_path;
