@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 3;
+    static const unsigned BOARD_SIZE = 4;
 
     enum TileState : unsigned {
         Blue = 0,
