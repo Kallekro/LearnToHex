@@ -89,9 +89,9 @@ public:
 	NetworkStrategy(){
 		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4},{10,4,4});
 		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,4,4});
-		m_moveLayer3.setStructure(m_moveLayer2.outputShape(),{20,4,4});
-		m_moveOut.setStructure(m_moveLayer3.outputShape(), {1,4,4});
-		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveLayer3 >> m_moveOut;
+		//m_moveLayer3.setStructure(m_moveLayer2.outputShape(),{20,4,4});
+		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,4,4});
+		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
 	}
     void setColor(unsigned color) {
         m_color = color;
@@ -187,8 +187,7 @@ int main () {
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
 	for (std::size_t t = 0; t != 50000; ++t){
-		//if(t % 1000 == 0)
-        //    playGame();
+
         if(t % 10 == 0) {
             game.reset();
             std::cout << game.asciiState() << std::endl;
