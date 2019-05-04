@@ -1,5 +1,6 @@
 
 #include "SelfRLCMA.h"
+#include "SelfRLTDL.h"
 
 #include "Hex.hpp"
 
@@ -28,7 +29,12 @@ public:
 	:m_game(game), m_baseStrategy(strategy){
 		m_features |= CAN_PROPOSE_STARTING_POINT;
 		m_features |= IS_NOISY;
+        m_features |= HAS_FIRST_DERIVATIVE;
 	}
+    
+    Game getGame() const {
+        return m_game;
+    }
 
 	std::size_t numberOfVariables()const{
 		return m_baseStrategy.numParameters();
@@ -59,17 +65,18 @@ public:
 		//importance weighted reward
 		double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
-			logW += game.logImportanceWeight({&strategy1, &strategy0});
+			logW += game.logImportanceWeight({&strategy0, &strategy1});
             //double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
             //if (u > 0.5) {
             //    game.FlipBoard();
             //}
         }
-		double r = game.getRank(0);
-        return r;
+    
+		double r = game.getRank(1);
 		double y = 2*r - 1;
-		return 1/(1+std::exp(y*logW));
-  //      return r;
+        
+		double rr = 1/(1+std::exp(y*logW));
+        return r;
 	}
 };
 
@@ -89,7 +96,7 @@ private:
 public:
 	NetworkStrategy(){
 		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4},{10,4,4});
-		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{10,4,4});
+		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{40,4,4});
 		//m_moveLayer3.setStructure(m_moveLayer2.outputShape(),{20,4,4});
 		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,4,4});
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
@@ -169,31 +176,40 @@ int main () {
 
     SelfPlayTwoPlayer<Hex::Game, NetworkStrategy> objective(game, player1);
     SelfRLCMA cma;
+    SelfRLTDL tdl;
     std::size_t d = objective.numberOfVariables();
     std::size_t lambda = SelfRLCMA::suggestLambda(d);
+
     cma.init(objective, objective.proposeStartingPoint(), lambda, 1.0);
+    tdl.init(objective, objective.proposeStartingPoint());
 
     auto playGame=[&]() {
-        player1.setParameters(cma.generatePolicy());
-        player2.setParameters(cma.generatePolicy());
         game.reset();
         std::cout << game.asciiState() << std::endl;
         while (game.takeTurn({&player1, &player2})) {
             std::cout << game.asciiState() << std::endl;
         }
         std::cout << game.asciiState() << std::endl;
+        std::cout << "End of example game." << std::endl;
     };
-#if 0
+#if 1
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
 	for (std::size_t t = 0; t != 50000; ++t){
+        //playGame();
+        
+        if (t% 50 == 0) {
+           playGame(); 
+        }
 
-        if(t % 10 == 0) {
+        if(t % 10 == 0 ) {
             game.reset();
-            std::cout << game.asciiState() << std::endl;
+            
+
+           // std::cout << game.asciiState() << std::endl;
             while (game.takeTurn({&player1, &random_player})) {
-                std::cout << game.asciiState() << std::endl;
+             //   std::cout << game.asciiState() << std::endl;
             }
             std::cout << game.asciiState() << std::endl;
             std::cout << "end of random game" << std::endl;
@@ -215,11 +231,19 @@ int main () {
                 sum += last_wins[i];
             }
             std::cout << "blue winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
-
-            std::cout <<t<<" "<<cma.sigma()<<std::endl;
+            std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
         }
-        game.reset();
+
+        player1.setParameters(cma.generatePolicy());
+        player2.setParameters(cma.generatePolicy());
+        auto log = game.getLog(); 
+
+        //for (int i=0; i < log.size(); i++){
+            //std::cout << log[i].moveAction << std::endl;
+        //}
+   //     std::cout << log.size() << std::endl;
 		cma.step(objective);
+		//tdl.step(objective);
 	}
 
 	std::cout<<"optimization done. example game"<<std::endl;

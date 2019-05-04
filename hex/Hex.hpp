@@ -5,13 +5,14 @@
 #include <memory>
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 4;
+    static const unsigned BOARD_SIZE = 7;
 
     enum TileState : unsigned {
         Blue = 0,
         Red = 1,
         Empty = 2
     };
+
 
     class LineSegment {
     public:
@@ -105,6 +106,15 @@ namespace Hex {
         }
     };
 
+
+    // log for importance sampling
+    struct Log {
+        unsigned activePlayer;
+        double logProb;
+        unsigned moveAction;
+        shark::blas::matrix<Tile> moveState;
+    };
+
     class Strategy{
     public:
         virtual shark::RealVector getMoveAction(shark::blas::matrix<Tile>const& field) = 0;
@@ -148,14 +158,9 @@ namespace Hex {
         std::vector<int> m_player_ranks;
         unsigned int m_next_rank;
 
-        // log for importance sampling
-        struct Log {
-            unsigned activePlayer;
-            double logProb;
-            unsigned moveAction;
-            shark::blas::matrix<Tile> moveState;
-        };
+
         Log m_lastStep;
+        std::vector<Log> m_log;
 
         shark::IntVector m_feasible_move_actions(shark::blas::matrix<Tile> const& field) const {
             shark::IntVector feasible_moves((BOARD_SIZE*BOARD_SIZE), 1);
@@ -275,8 +280,11 @@ namespace Hex {
             m_initializeboard();
             m_one_player_debug_mode = test_mode;
         }
-
-
+        
+        std::vector<Log> getLog() {
+            return m_log;
+        }
+        
         void reset() {
             // reset board
             for (std::size_t i = 0; i < BOARD_SIZE; i++) {
@@ -288,6 +296,8 @@ namespace Hex {
             m_activePlayer = 1;
             m_playerWon = -1;
             turns_taken = 0;
+            m_log = std::vector<Log>();
+            m_lastStep = Log();
         }
 
         void FlipBoard() {
@@ -336,8 +346,9 @@ namespace Hex {
             if (won) {
                 m_playerWon = m_activePlayer;
             }
-            		m_lastStep.moveAction = moveAction;
+            m_lastStep.moveAction = moveAction;
 		    m_lastStep.logProb = std::log(moveProbs(moveAction));
+            m_log.push_back(m_lastStep);
             return !won;
         }
 
@@ -354,14 +365,11 @@ namespace Hex {
 
         //relative frequency of the last action as if played under a different pair of strategies
         double logImportanceWeight(std::vector<Strategy*> const& strategies){
-
-
 	        auto strategy = strategies[m_lastStep.activePlayer];
 	        auto feasibleMoves = m_feasible_move_actions(m_lastStep.moveState);
 	        shark::RealVector moveProbs =m_feasible_probabilies(strategy->getMoveAction(m_lastStep.moveState), feasibleMoves);
 
 	        double logProb = std::log(moveProbs(m_lastStep.moveAction));
-
 	        return logProb - m_lastStep.logProb;
 
         }
