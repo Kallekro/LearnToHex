@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 7;
+    static const unsigned BOARD_SIZE = 5;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -280,11 +280,11 @@ namespace Hex {
             m_initializeboard();
             m_one_player_debug_mode = test_mode;
         }
-        
+
         std::vector<Log> getLog() {
             return m_log;
         }
-        
+
         void reset() {
             // reset board
             for (std::size_t i = 0; i < BOARD_SIZE; i++) {
@@ -292,8 +292,12 @@ namespace Hex {
                     m_gameboard(i,j).reset();
                 }
             }
-            // TODO: Choose random starter
-            m_activePlayer = 1;
+            // random starting player
+            if (shark::random::coinToss(shark::random::globalRng())) {
+                m_activePlayer = 0;
+            } else {
+                m_activePlayer = 1;
+            }
             m_playerWon = -1;
             turns_taken = 0;
             m_log = std::vector<Log>();

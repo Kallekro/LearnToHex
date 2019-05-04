@@ -31,7 +31,7 @@ public:
 		m_features |= IS_NOISY;
         m_features |= HAS_FIRST_DERIVATIVE;
 	}
-    
+
     Game getGame() const {
         return m_game;
     }
@@ -71,10 +71,10 @@ public:
             //    game.FlipBoard();
             //}
         }
-    
+
 		double r = game.getRank(1);
 		double y = 2*r - 1;
-        
+
 		double rr = 1/(1+std::exp(y*logW));
         return r;
 	}
@@ -121,12 +121,14 @@ public:
 				else if(field(i,j).tileState != Hex::Empty){ // Channel where other players tiles are 1
 					inputs(4*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
 				}
-				else if (  (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+				else if (i == 0 || i == Hex::BOARD_SIZE-1) {
+                        //(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        //|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
 				}
-                else if (  (m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+                else if (j == 0 || j == Hex::BOARD_SIZE-1) {
+                        //(m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        //|| (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
 				}
 			}
@@ -198,31 +200,31 @@ int main () {
     std::deque<float> last_wins;
 	for (std::size_t t = 0; t != 50000; ++t){
         //playGame();
-        
+
         if (t% 50 == 0) {
-           playGame(); 
+           playGame();
         }
 
         if(t % 10 == 0 ) {
             game.reset();
-            
+
 
            // std::cout << game.asciiState() << std::endl;
-            while (game.takeTurn({&player1, &random_player})) {
+            while (game.takeTurn({&random_player, &player1})) {
              //   std::cout << game.asciiState() << std::endl;
             }
             std::cout << game.asciiState() << std::endl;
             std::cout << "end of random game" << std::endl;
             games_vs_random_played++;
-            if (game.getRank(Hex::Blue)) {
-                std::cout << "Network strategy (blue) won!" << std::endl;
+            if (game.getRank(Hex::Red)) {
+                std::cout << "Network strategy (red) won!" << std::endl;
                 wins_vs_random++;
                 last_wins.push_back(1);
             } else {
-                std::cout << "Random strategy (red) won!" << std::endl;
+                std::cout << "Random strategy (blue) won!" << std::endl;
                 last_wins.push_back(0);
             }
-            std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
+            std::cout << "red winrate: " << wins_vs_random / games_vs_random_played << std::endl;
             if (last_wins.size() > 100) {
                 last_wins.pop_front();
             }
@@ -230,13 +232,13 @@ int main () {
             for (int i=0; i < last_wins.size(); i++) {
                 sum += last_wins[i];
             }
-            std::cout << "blue winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
+            std::cout << "red winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
             std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
         }
 
         player1.setParameters(cma.generatePolicy());
         player2.setParameters(cma.generatePolicy());
-        auto log = game.getLog(); 
+        auto log = game.getLog();
 
         //for (int i=0; i < log.size(); i++){
             //std::cout << log[i].moveAction << std::endl;
