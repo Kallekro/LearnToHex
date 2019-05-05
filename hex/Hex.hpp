@@ -136,6 +136,57 @@ namespace Hex {
         void setParameters(shark::RealVector const&) override{}
     };
 
+    bool validInput(std::string inp, std::pair<unsigned,unsigned>* pos) {
+        if (inp.length() == 0) { return false; }
+        if (!((inp[0] >= 'a' && inp[0] <= ('a' + BOARD_SIZE)) || (inp[0] >= 'A' && inp[0] <= ('A' + BOARD_SIZE)))) {
+            return false;
+        }
+        unsigned num;
+        try {
+            num = std::stoi(inp.substr(1, inp.length()-1));
+        } catch (std::invalid_argument& e) {
+            return false;
+        }
+        if (num <= 0 || num > BOARD_SIZE) { return false; }
+        (*pos).first = num - 1;
+        (*pos).second = toupper(inp[0]) - 65;
+        return true;
+    }
+
+    class HumanStrategy: public Strategy {
+    public:
+        shark::RealVector getMoveAction(shark::blas::matrix<Tile>const& field) override {
+            std::cout << "Your turn." << std::endl;
+            std::string playerInput = "";
+            std::pair<unsigned,unsigned> pos;
+            bool validPos = false;
+            while (!validPos) {
+                while (!validInput(playerInput, &pos)) {
+                    if (playerInput.length() > 0) {
+                        std::cout << "Invalid input: " << playerInput << ". Please try again." << std::endl;
+                    }
+                    std::getline(std::cin, playerInput);
+                }
+                if (field(pos.first, pos.second).tileState == Empty) {
+                    validPos = true;
+                } else {
+                    std::cout << "Please select an empty tile." << std::endl;
+                    playerInput = "";
+                }
+            }
+            shark::RealVector movefield(BOARD_SIZE * BOARD_SIZE, -std::numeric_limits<double>::max());
+            movefield(pos.first * BOARD_SIZE + pos.second) = 1.0;
+
+            return movefield;
+        }
+
+        std::size_t numParameters() const override{
+            return 1;
+        }
+
+        void setParameters(shark::RealVector const&) override{}
+    };
+
     class Game {
 
 	    shark::blas::matrix<Tile> m_gameboard;
@@ -200,9 +251,9 @@ namespace Hex {
             unsigned x = move_action % BOARD_SIZE;
             unsigned y = move_action / BOARD_SIZE;
             std::pair<unsigned,unsigned> pos (y, x);
-            if (m_activePlayer == 1) {
-                std::pair<unsigned,unsigned> pos (x, y);
-            }
+            //if (m_activePlayer == 1) {
+            //    std::pair<unsigned,unsigned> pos (x, y);
+            //}
             return m_place_tile(pos);
         }
 
@@ -294,7 +345,7 @@ namespace Hex {
             }
             // random starting player
             if (shark::random::coinToss(shark::random::globalRng())) {
-                m_activePlayer = 0;
+                    m_activePlayer = 0;
             } else {
                 m_activePlayer = 1;
             }

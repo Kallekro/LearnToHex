@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <random>
 #include <unistd.h>
+#include <fstream>
 
 using namespace shark;
 
@@ -121,7 +122,7 @@ public:
 				else if(field(i,j).tileState != Hex::Empty){ // Channel where other players tiles are 1
 					inputs(4*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
 				}
-				else if (i == 0 || i == Hex::BOARD_SIZE-1) {
+                else if (i == 0 || i == Hex::BOARD_SIZE-1) {
                         //(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
                         //|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
@@ -160,9 +161,6 @@ public:
 
 };
 
-// TODO:
-// * implement game.reset()
-// * implement game.asciiState() (like printhex() but returns string)
 int main () {
     Hex::Game game(false);
 
@@ -173,7 +171,6 @@ int main () {
     player1.setColor(0);
     player2.setColor(1);
 
-    //Hex::RandomStrategy player1;
     Hex::RandomStrategy random_player;
 
     SelfPlayTwoPlayer<Hex::Game, NetworkStrategy> objective(game, player1);
@@ -183,6 +180,12 @@ int main () {
     std::size_t lambda = SelfRLCMA::suggestLambda(d);
 
     cma.init(objective, objective.proposeStartingPoint(), lambda, 1.0);
+
+    std::ifstream ifs("hex4.model");
+    boost::archive::polymorphic_text_iarchive ia(ifs);
+    cma.read(ia);
+    ifs.close();
+
     tdl.init(objective, objective.proposeStartingPoint());
 
     auto playGame=[&]() {
@@ -194,15 +197,29 @@ int main () {
         std::cout << game.asciiState() << std::endl;
         std::cout << "End of example game." << std::endl;
     };
-#if 1
+#if 0 // training test
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
+
+    unsigned version = 0;
+
 	for (std::size_t t = 0; t != 50000; ++t){
         //playGame();
 
         if (t% 50 == 0) {
            playGame();
+        }
+
+        if (t%500 == 0) {
+            // save the model
+            std::ostringstream name;
+            name << "hex" << version << ".model";
+            std::ofstream ofs(name.str());
+            boost::archive::polymorphic_text_oarchive oa(ofs);
+            cma.write(oa);
+            ofs.close();
+            version++;
         }
 
         if(t % 10 == 0 ) {
@@ -258,7 +275,21 @@ int main () {
 	}
 
     return 0;
-#else
+#elif 1 // Test with human player strategy
+    shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
+    Hex::HumanStrategy human_player;
+    std::cout << game.asciiState() << std::endl;
+    while (game.takeTurn({&human_player, &player2})) {
+        std::cout << game.asciiState() << std::endl;
+    }
+    std::cout << game.asciiState() << std::endl;
+    if (game.getRank(0)) {
+        std::cout << "You won!" << std::endl;
+    } else {
+        std::cout << "You lost." << std::endl;
+    }
+    return 0;
+#elif 0 // Test for win percentage of random players
     Hex::RandomStrategy random_player2;
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
@@ -275,7 +306,6 @@ int main () {
 	}
     std::cout << "done." << std::endl;
     std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
-
 #endif
 
 
