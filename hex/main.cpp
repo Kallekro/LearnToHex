@@ -95,10 +95,9 @@ private:
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4},{10,4,4});
-		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{40,4,4});
-		//m_moveLayer3.setStructure(m_moveLayer2.outputShape(),{20,4,4});
-		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,4,4});
+		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2},{10,2,2});
+		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{60,2,2});
+		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,2,2});
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
 	}
     void setColor(unsigned color) {
@@ -107,30 +106,33 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*4),0.0);
-		for(int i = 0; i != Hex::BOARD_SIZE; ++i){
-			for(int j = 0; j != Hex::BOARD_SIZE; ++j){
-                if (m_color == Hex::Red) {
-                    int tmp = i;
-                    i = j;
-                    j = tmp;
-                }
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*2),0.0);
+		for(int i = 0; i < Hex::BOARD_SIZE; i++){
+			for(int j = 0; j < Hex::BOARD_SIZE; j++){
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
-					inputs(4*(i*Hex::BOARD_SIZE+j)) = 1.0;
+                    if (m_color == Hex::Red ) {
+					    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
+                    }else{
+					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
+                    }
+                }
+				else if(field(i,j).tileState == Hex::Empty ){ // Channel where other players tiles are 1
+                if (m_color == Hex::Red) {
+					inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
+                } else {
+					inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+                }
 				}
-				else if(field(i,j).tileState != Hex::Empty){ // Channel where other players tiles are 1
-					inputs(4*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
-				}
-				else if (i == 0 || i == Hex::BOARD_SIZE-1) {
-                        //(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        //|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
-				}
-                else if (j == 0 || j == Hex::BOARD_SIZE-1) {
-                        //(m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        //|| (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
-				}
+				//else if (i == 0 || i == Hex::BOARD_SIZE-1) {
+                        ////(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        ////|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					//inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+				//}
+                //else if (j == 0 || j == Hex::BOARD_SIZE-1) {
+                        ////(m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
+                        ////|| (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					//inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
+				//}
 			}
 		}
 
@@ -210,21 +212,21 @@ int main () {
 
 
            // std::cout << game.asciiState() << std::endl;
-            while (game.takeTurn({&random_player, &player1})) {
+            while (game.takeTurn({&player1, &random_player})) {
              //   std::cout << game.asciiState() << std::endl;
             }
             std::cout << game.asciiState() << std::endl;
             std::cout << "end of random game" << std::endl;
             games_vs_random_played++;
-            if (game.getRank(Hex::Red)) {
-                std::cout << "Network strategy (red) won!" << std::endl;
+            if (game.getRank(Hex::Blue)) {
+                std::cout << "Network strategy (blue) won!" << std::endl;
                 wins_vs_random++;
                 last_wins.push_back(1);
             } else {
-                std::cout << "Random strategy (blue) won!" << std::endl;
+                std::cout << "Random strategy (red) won!" << std::endl;
                 last_wins.push_back(0);
             }
-            std::cout << "red winrate: " << wins_vs_random / games_vs_random_played << std::endl;
+            std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
             if (last_wins.size() > 100) {
                 last_wins.pop_front();
             }
@@ -232,7 +234,7 @@ int main () {
             for (int i=0; i < last_wins.size(); i++) {
                 sum += last_wins[i];
             }
-            std::cout << "red winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
+            std::cout << "blue winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
             std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
         }
 
