@@ -343,6 +343,7 @@ namespace Hex {
                     m_gameboard(i,j).reset();
                 }
             }
+            m_activePlayer = 1;
             // random starting player
             if (shark::random::coinToss(shark::random::globalRng())) {
                     m_activePlayer = 0;
