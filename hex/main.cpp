@@ -97,10 +97,19 @@ private:
 public:
 	NetworkStrategy(){
 		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2},{10,2,2});
-		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{60,2,2});
-		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,2,2});
-		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
+		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{40,2,2});
+        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {20, 2, 2});
+		m_moveOut.setStructure(m_moveLayer3.outputShape(), {1,2,2});
+		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveLayer3  >> m_moveOut;
 	}
+
+    void save(OutArchive & archive) {
+        m_moveNet.write(archive);
+    }
+    void load(InArchive & archive) {
+        m_moveNet.read(archive);
+    }
+
     void setColor(unsigned color) {
         m_color = color;
     }
@@ -117,13 +126,14 @@ public:
 					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
-				else if(field(i,j).tileState == Hex::Empty ){ // Channel where other players tiles are 1
+				else if(field(i,j).tileState != Hex::Empty ){ // Channel where other players tiles are 1
                 if (m_color == Hex::Red) {
 					inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
                 } else {
 					inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
                 }
 				}
+
 				//else if (i == 0 || i == Hex::BOARD_SIZE-1) {
                         ////(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
                         ////|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
@@ -183,13 +193,15 @@ int main () {
 
     cma.init(objective, objective.proposeStartingPoint(), lambda, 1.0);
 
-    std::ifstream ifs("hex4.model");
-    boost::archive::polymorphic_text_iarchive ia(ifs);
-    cma.read(ia);
-    ifs.close();
+
+
+    //std::ifstream ifs("hex11.model");
+    //boost::archive::polymorphic_text_iarchive ia(ifs);
+    //player1.load(ia); 
+    //ifs.close();
 
     tdl.init(objective, objective.proposeStartingPoint());
-
+    
     auto playGame=[&]() {
         game.reset();
         std::cout << game.asciiState() << std::endl;
@@ -199,7 +211,7 @@ int main () {
         std::cout << game.asciiState() << std::endl;
         std::cout << "End of example game." << std::endl;
     };
-#if 0 // training test
+#if 1 // training test
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
@@ -213,13 +225,13 @@ int main () {
            playGame();
         }
 
-        if (t%500 == 0) {
+        if (t%1000 == 0) {
             // save the model
             std::ostringstream name;
             name << "hex" << version << ".model";
             std::ofstream ofs(name.str());
             boost::archive::polymorphic_text_oarchive oa(ofs);
-            cma.write(oa);
+            player1.save(oa);
             ofs.close();
             version++;
         }
@@ -255,8 +267,10 @@ int main () {
             std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
         }
 
-        player1.setParameters(cma.generatePolicy());
-        player2.setParameters(cma.generatePolicy());
+        if (t % 100) {
+            player1.setParameters(cma.generatePolicy());
+            player2.setParameters(cma.generatePolicy());
+        }
         auto log = game.getLog();
 
         //for (int i=0; i < log.size(); i++){

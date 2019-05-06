@@ -345,11 +345,11 @@ namespace Hex {
             }
             m_activePlayer = 1;
             // random starting player
-            if (shark::random::coinToss(shark::random::globalRng())) {
-                    m_activePlayer = 0;
-            } else {
-                m_activePlayer = 1;
-            }
+            //if (shark::random::coinToss(shark::random::globalRng())) {
+                    //m_activePlayer = 0;
+            //} else {
+                //m_activePlayer = 1;
+            //}
             m_playerWon = -1;
             turns_taken = 0;
             m_log = std::vector<Log>();
