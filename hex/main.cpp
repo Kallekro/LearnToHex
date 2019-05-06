@@ -101,6 +101,14 @@ public:
 		m_moveOut.setStructure(m_moveLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
 	}
+
+    void save(OutArchive & archive) {
+        m_moveNet.write(archive);
+    }
+    void load(InArchive & archive) {
+        m_moveNet.read(archive);
+    }
+
     void setColor(unsigned color) {
         m_color = color;
     }
@@ -124,6 +132,7 @@ public:
                         inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
                     }
 				}
+
 				//else if (i == 0 || i == Hex::BOARD_SIZE-1) {
                         ////(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
                         ////|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
@@ -183,9 +192,9 @@ int main () {
 
     cma.init(objective, objective.proposeStartingPoint(), lambda, 1.0);
 
-    //std::ifstream ifs("hex4.model");
+    //std::ifstream ifs("hex11.model");
     //boost::archive::polymorphic_text_iarchive ia(ifs);
-    //cma.read(ia);
+    //player1.load(ia);
     //ifs.close();
 
     tdl.init(objective, objective.proposeStartingPoint());
@@ -213,13 +222,13 @@ int main () {
            playGame();
         }
 
-        if (t%500 == 0) {
+        if (t%1000 == 0) {
             // save the model
             std::ostringstream name;
             name << "hex" << version << ".model";
             std::ofstream ofs(name.str());
             boost::archive::polymorphic_text_oarchive oa(ofs);
-            cma.write(oa);
+            player1.save(oa);
             ofs.close();
             version++;
         }
@@ -257,6 +266,10 @@ int main () {
             std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
         }
 
+        if (t % 100) {
+            player1.setParameters(cma.generatePolicy());
+            player2.setParameters(cma.generatePolicy());
+        }
         auto log = game.getLog();
 
         //for (int i=0; i < log.size(); i++){
