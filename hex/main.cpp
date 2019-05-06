@@ -295,14 +295,14 @@ int main () {
 	}
 
     return 0;
-#elif 1 // Test with human player strategy
-#if BUILD_FOR_PYTHON
-    std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
-#endif
+#elif BUILD_FOR_PYTHON
     shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
     Hex::HumanStrategy human_player;
+    loadStrategy("build/best.model", player1);
+
+    std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
-    while (game.takeTurn({&human_player, &player2})) {
+    while (game.takeTurn({&player1, &human_player})) {
         std::cout << game.asciiState() << std::endl;
     }
     std::cout << game.asciiState() << std::endl;
