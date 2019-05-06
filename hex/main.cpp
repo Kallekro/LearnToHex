@@ -238,16 +238,12 @@ int main () {
            playGame();
         }
 
-        if (t%10 == 0) {
-            // save the model
-            saveStrategy("best", player1);
-            version++;
-        }
 
         if(t % 10 == 0 ) {
             game.reset();
 
             player1.setParameters(cma.mean());
+            saveStrategy("best", player1);
             //player2.setParameters(cma.generatePolicy());
 
            // std::cout << game.asciiState() << std::endl;
@@ -299,7 +295,7 @@ int main () {
 	}
 
     return 0;
-#elif 0 // Test with human player strategy
+#elif 1 // Test with human player strategy
 #if BUILD_FOR_PYTHON
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
 #endif
