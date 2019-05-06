@@ -179,7 +179,7 @@ void loadStrategy(std::string model_path, NetworkStrategy& strag) {
     ifs.close();
 }
 
-void saveStrategy(std::string model_path, NetworkStrategy& strag) { 
+void saveStrategy(std::string model_path, NetworkStrategy& strag) {
     std::ostringstream name;
     name << model_path << ".model" ;
     std::ofstream ofs(name.str());
@@ -224,7 +224,7 @@ int main () {
         std::cout << game.asciiState() << std::endl;
         std::cout << "End of example game." << std::endl;
     };
-#if 1 // training test
+#ifndef BUILD_FOR_PYTHON // training test
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
@@ -278,7 +278,7 @@ int main () {
             std::cout<< "Learn: " << cma.rate() << std::endl;
         }
 
-     
+
         auto log = game.getLog();
 
         //for (int i=0; i < log.size(); i++){
@@ -310,12 +310,16 @@ int main () {
         std::cout << game.asciiState() << std::endl;
     }
     std::cout << game.asciiState() << std::endl;
+#if BUILD_FOR_PYTHON
+    std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
+#else
     if (game.getRank(0)) {
         std::cout << "You won!" << std::endl;
     } else {
         std::cout << "You lost." << std::endl;
     }
     return 0;
+#endif
 #elif 0 // Test for win percentage of random players
     Hex::RandomStrategy random_player2;
     float wins_vs_random = 0;
