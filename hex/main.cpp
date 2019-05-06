@@ -172,6 +172,22 @@ public:
 
 };
 
+void loadStrategy(std::string model_path, NetworkStrategy& strag) {
+    std::ifstream ifs(model_path);
+    boost::archive::polymorphic_text_iarchive ia(ifs);
+    strag.load(ia);
+    ifs.close();
+}
+
+void saveStrategy(std::string model_path, NetworkStrategy& strag) {
+    std::ostringstream name;
+    name << model_path << ".model" ;
+    std::ofstream ofs(name.str());
+    boost::archive::polymorphic_text_oarchive oa(ofs);
+    strag.save(oa);
+    ofs.close();
+}
+
 int main () {
     Hex::Game game(false);
 
@@ -222,14 +238,9 @@ int main () {
            playGame();
         }
 
-        if (t%1000 == 0) {
+        if (t%10 == 0) {
             // save the model
-            std::ostringstream name;
-            name << "hex" << version << ".model";
-            std::ofstream ofs(name.str());
-            boost::archive::polymorphic_text_oarchive oa(ofs);
-            player1.save(oa);
-            ofs.close();
+            saveStrategy("best", player1);
             version++;
         }
 
@@ -263,13 +274,11 @@ int main () {
                 sum += last_wins[i];
             }
             std::cout << "blue winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
-            std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
+            std::cout<<"Game " << t << "\nSigma: " << cma.sigma() << std::endl;
+            std::cout<< "Learn: " << cma.rate() << std::endl;
         }
 
-        if (t % 100) {
-            player1.setParameters(cma.generatePolicy());
-            player2.setParameters(cma.generatePolicy());
-        }
+
         auto log = game.getLog();
 
         //for (int i=0; i < log.size(); i++){
@@ -290,7 +299,7 @@ int main () {
 	}
 
     return 0;
-#elif 1 // Test with human player strategy
+#elif 0 // Test with human player strategy
 #if BUILD_FOR_PYTHON
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
 #endif
