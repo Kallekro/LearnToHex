@@ -153,24 +153,38 @@ namespace Hex {
         return true;
     }
 
+
     class HumanStrategy: public Strategy {
     public:
         shark::RealVector getMoveAction(shark::blas::matrix<Tile>const& field) override {
-            std::cout << "Your turn." << std::endl;
+            #if BUILD_FOR_PYTHON
+                std::cout << "__TURN__" << std::endl;
+            #else
+                std::cout << "Your turn." << std::endl;
+            #endif
             std::string playerInput = "";
             std::pair<unsigned,unsigned> pos;
             bool validPos = false;
             while (!validPos) {
                 while (!validInput(playerInput, &pos)) {
                     if (playerInput.length() > 0) {
+                    #if BUILD_FOR_PYTHON
+                        std::cout << "__INVALID_INPUT__" << std::endl;
+                    #else
                         std::cout << "Invalid input: " << playerInput << ". Please try again." << std::endl;
+                    #endif
                     }
                     std::getline(std::cin, playerInput);
                 }
                 if (field(pos.first, pos.second).tileState == Empty) {
                     validPos = true;
                 } else {
-                    std::cout << "Please select an empty tile." << std::endl;
+                    #if BUILD_FOR_PYTHON
+                        std::cout << "__NON_EMPTY__" << std::endl;
+                    #else
+                        std::cout << "Please select an empty tile." << std::endl;
+                    #endif
+
                     playerInput = "";
                 }
             }
@@ -408,17 +422,6 @@ namespace Hex {
             return !won;
         }
 
-        // Manual turn for playing the game without RL strategy
-        bool takeManualTurn(std::string pos, bool* won) {
-            std::pair<unsigned,unsigned> pos_pair = m_alphnum2num(pos);
-            if (m_gameboard(pos_pair.first, pos_pair.second).tileState != Empty) {
-                return false;
-            }
-            *won = m_place_tile(pos_pair);
-            m_next_player();
-            return true;
-        }
-
         //relative frequency of the last action as if played under a different pair of strategies
         double logImportanceWeight(std::vector<Strategy*> const& strategies){
 	        auto strategy = strategies[m_lastStep.activePlayer];
@@ -435,22 +438,34 @@ namespace Hex {
 
         std::string asciiState() {
             std::string resStr("");
-            resStr += m_printletters(1);
-            for (int i=0; i < BOARD_SIZE; i++) {
-                for (int ii=0; ii < i; ii++) {
-                    if (ii == 8) { continue; }
-                    resStr += " ";
+            #if BUILD_FOR_PYTHON
+                resStr += "__BOARD_BEGIN__\n";
+                for (int i=0; i < BOARD_SIZE; i++) {
+                    for (int j=0; j < BOARD_SIZE; j++) {
+                        resStr += std::to_string(m_gameboard(i,j).tileState);
+                    }
+                    resStr += '\n';
                 }
-                resStr += m_blue_color + std::to_string(i+1) + m_reset_color;
-                for (int j=0; j < BOARD_SIZE; j++) {
-                    resStr += " " + m_hexes[m_gameboard(i, j).tileState];
+                resStr += "__BOARD_END__\n";
+            #else
+                resStr += m_printletters(1);
+                for (int i=0; i < BOARD_SIZE; i++) {
+                    for (int ii=0; ii < i; ii++) {
+                        if (ii == 8) { continue; }
+                        resStr += " ";
+                    }
+                    resStr += m_blue_color + std::to_string(i+1) + m_reset_color;
+                    for (int j=0; j < BOARD_SIZE; j++) {
+                        resStr += " " + m_hexes[m_gameboard(i, j).tileState];
+                    }
+                    resStr +=  " " + m_blue_color + std::to_string(i+1) + m_reset_color;
+                    resStr += '\n';
                 }
-                resStr +=  " " + m_blue_color + std::to_string(i+1) + m_reset_color;
-                resStr += '\n';
-            }
-            resStr += m_printletters(BOARD_SIZE + 2);
+                resStr += m_printletters(BOARD_SIZE + 2);
+            #endif
             return resStr;
         }
+
     };
 }
 

@@ -88,7 +88,7 @@ private:
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer;
 	Conv2DModel<RealVector, TanhNeuron> m_moveLayer2;
     Conv2DModel<RealVector, TanhNeuron> m_moveLayer3;
-	Conv2DModel<RealVector> m_moveOut;
+	LinearModel<RealVector> m_moveOut;
 
 	ConcatenatedModel<RealVector> m_moveNet ;
 
@@ -96,9 +96,9 @@ private:
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2},{10,2,2});
-		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{60,2,2});
-		m_moveOut.setStructure(m_moveLayer2.outputShape(), {1,2,2});
+		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2}, {10,3,3});
+		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,3,3});
+		m_moveOut.setStructure(m_moveLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
 	}
     void setColor(unsigned color) {
@@ -113,16 +113,16 @@ public:
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
                     if (m_color == Hex::Red ) {
 					    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
-                    }else{
+                    } else{
 					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
-				else if(field(i,j).tileState == Hex::Empty ){ // Channel where other players tiles are 1
-                if (m_color == Hex::Red) {
-					inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
-                } else {
-					inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
-                }
+				else if(field(i,j).tileState == Hex::Empty ) { // Channel where other players tiles are 1
+                    if (m_color == Hex::Red) {
+                        inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
+                    } else {
+                        inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+                    }
 				}
 				//else if (i == 0 || i == Hex::BOARD_SIZE-1) {
                         ////(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
@@ -183,10 +183,10 @@ int main () {
 
     cma.init(objective, objective.proposeStartingPoint(), lambda, 1.0);
 
-    std::ifstream ifs("hex4.model");
-    boost::archive::polymorphic_text_iarchive ia(ifs);
-    cma.read(ia);
-    ifs.close();
+    //std::ifstream ifs("hex4.model");
+    //boost::archive::polymorphic_text_iarchive ia(ifs);
+    //cma.read(ia);
+    //ifs.close();
 
     tdl.init(objective, objective.proposeStartingPoint());
 
@@ -227,6 +227,8 @@ int main () {
         if(t % 10 == 0 ) {
             game.reset();
 
+            player1.setParameters(cma.mean());
+            //player2.setParameters(cma.generatePolicy());
 
            // std::cout << game.asciiState() << std::endl;
             while (game.takeTurn({&player1, &random_player})) {
@@ -255,8 +257,6 @@ int main () {
             std::cout<<"game " << t << "\nSigma " << cma.sigma() << std::endl;
         }
 
-        player1.setParameters(cma.generatePolicy());
-        player2.setParameters(cma.generatePolicy());
         auto log = game.getLog();
 
         //for (int i=0; i < log.size(); i++){
@@ -278,6 +278,9 @@ int main () {
 
     return 0;
 #elif 1 // Test with human player strategy
+#if BUILD_FOR_PYTHON
+    std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
+#endif
     shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
     Hex::HumanStrategy human_player;
     std::cout << game.asciiState() << std::endl;
