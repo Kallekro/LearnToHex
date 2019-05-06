@@ -3,6 +3,7 @@
 # The program works by opening the hex C++ program as a subprocess and communicating with it following a strict protocol.
 import sys, os, subprocess, select, atexit, time, argparse
 import tkinter as tk
+from tkinter import filedialog
 
 """ Close a pipe if open. """
 def closePipe(pipe):
@@ -24,15 +25,16 @@ def closeHex(hex_process):
         pass
 
 """ Start the hex process """
-def startHex():
-    hex_process = subprocess.Popen(['build/hex_python'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def startHex(model=""):
+    hex_process = subprocess.Popen(['build/hex_python', model], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     atexit.register(lambda: closeHex(hex_process))
     return hex_process
 
 """ The interface between the hex subprocess and the main process. """
 class HexInterface():
-    def __init__(self):
-        self.hex_process = startHex()
+    def __init__(self, model=""):
+        self.model = model
+        self.hex_process = startHex(model)
         self.board_size = 0
         self.recent_board = ""
         self.reading_board = False
@@ -45,7 +47,7 @@ class HexInterface():
         self.game_running = True
         self.player_won = -1
         closeHex(self.hex_process)
-        self.hex_process = startHex()
+        self.hex_process = startHex(self.model)
 
     def sendInput(self, inp):
         if not self.game_running: return
@@ -119,11 +121,11 @@ class HexGUI(tk.Canvas):
 
 """ The tk application """
 class HexApp(tk.Frame):
-    def __init__(self, master=None):
+    def __init__(self, master=None, model=""):
         tk.Frame.__init__(self, master)
         self.grid(padx=5, pady=5)
 
-        self.hex_interface = HexInterface()
+        self.hex_interface = HexInterface(model)
         self.hex_interface.readOutput()
 
         self.createWidgets()
@@ -134,16 +136,21 @@ class HexApp(tk.Frame):
         if self.hex_interface.board_size == 0:
             sys.exit("Must read beginning output from hex before creating widgets.")
 
+        modelframe = tk.Frame(self)
+        modelframe.grid(row=0, column=0)
+        loadmodel_button = tk.Button(modelframe, text="Load model", command=self.loadModel)
+        loadmodel_button.grid(row=0, column=0, sticky="W")
+
         restart_button = tk.Button(self, text="Restart", command=self.reset)
-        restart_button.grid()
+        restart_button.grid(row=0, column=1)
 
         self.hex_GUI = HexGUI(self, self.hex_interface.board_size, background='white', bd=3, relief=tk.SUNKEN)
-        self.hex_GUI.grid()
+        self.hex_GUI.grid(row=1, column=0, columnspan=2)
 
         self.win_stringvar = tk.StringVar()
         self.win_stringvar.set("")
         win_label = tk.Label(self, textvariable=self.win_stringvar)
-        win_label.grid()
+        win_label.grid(row=2, column=0, columnspan=2)
 
     def drawBoard(self):
         self.hex_GUI.delete(tk.ALL)
@@ -168,14 +175,21 @@ class HexApp(tk.Frame):
         self.hex_interface.readOutput()
         self.drawBoard()
 
-def main():
+    def loadModel(self):
+        filename = filedialog.askopenfilename(initialdir=__file__, title="Select model", filetypes=(("model", "*.model"), ("all files", "*.*")))
+        if filename:
+            self.hex_interface.model = filename
+            self.reset()
+
+def main(model):
     root = tk.Tk()
-    app = HexApp(root)
+    app = HexApp(root, model)
     app.master.title("Hex")
     app.mainloop()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play hex.")
+    parser.add_argument("--model", dest="model", default="")
     parser.add_argument("--make", dest="make", action='store_true')
     args = parser.parse_args()
 
@@ -183,4 +197,4 @@ if __name__ == "__main__":
         if subprocess.run(["cd build && make hex_python && cd .."], shell=True).returncode != 0:
             sys.exit("Failed to make.")
 
-    main()
+    main(args.model)

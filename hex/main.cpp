@@ -183,7 +183,7 @@ void saveStrategy(std::string model_path, NetworkStrategy& strag) {
     ofs.close();
 }
 
-int main () {
+int main (int argc, char* argv[]) {
     Hex::Game game(false);
 
     shark::random::globalRng().seed(1338);
@@ -294,7 +294,9 @@ int main () {
     shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
     Hex::HumanStrategy human_player;
 
-    loadStrategy("forpython.model", player2);
+    if (argc == 2 && strlen(argv[1])) {
+        loadStrategy(argv[1], player1);
+    }
 
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
