@@ -1,6 +1,10 @@
+# This program is a tk GUI application that can be used to play Hex against a trained strategy
+# The program relies on the target 'hex_python' which is built with make. Running this file with --make, the target is built.
+# The program works by opening the hex C++ program as a subprocess and communicating with it following a strict protocol.
 import sys, os, subprocess, select, atexit, time, argparse
 import tkinter as tk
 
+""" Close a pipe if open. """
 def closePipe(pipe):
     try:
         pipe.flush()
@@ -8,6 +12,7 @@ def closePipe(pipe):
     except: # already closed
         pass
 
+""" Close the hex process if alive """
 def closeHex(hex_process):
     closePipe(hex_process.stdin)
     closePipe(hex_process.stdout)
@@ -18,16 +23,13 @@ def closeHex(hex_process):
     except:
         pass
 
+""" Start the hex process """
 def startHex():
     hex_process = subprocess.Popen(['build/hex_python'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     atexit.register(lambda: closeHex(hex_process))
     return hex_process
 
-def readAllDecorator(fun):
-    def readAll(self):
-        while fun(self): continue
-    return readAll
-
+""" The interface between the hex subprocess and the main process. """
 class HexInterface():
     def __init__(self):
         self.hex_process = startHex()
@@ -45,46 +47,41 @@ class HexInterface():
         closeHex(self.hex_process)
         self.hex_process = startHex()
 
-
     def sendInput(self, inp):
         if not self.game_running: return
         rlist, wlist, xlist = select.select([], [self.hex_process.stdin], [])
         os.write(wlist[0].fileno(), (inp.strip('\n') + '\n').encode(sys.stdin.encoding))
         self.readOutput()
 
-    @readAllDecorator
     def readOutput(self):
         if not self.game_running: return
         rlist, wlist, xlist = select.select([self.hex_process.stdout], [], [])
         output = ""
-        for stdout in rlist:
-            output += os.read(stdout.fileno(), 1024).decode(sys.stdout.encoding)
-        for line in output.split('\n'):
-            if line.startswith("__BOARD_SIZE__"):
-                self.board_size = int(line.split(' ')[1])
-            elif line.startswith("__GAME_OVER__"):
-                self.game_running = False
-                self.player_won = int(line.split()[1])
-                return 0
-            elif line == "__BOARD_BEGIN__":
-                self.recent_board = ""
-                self.reading_board = True
-            elif line == "__BOARD_END__":
-                self.reading_board = False
-            elif line == "__TURN__":
-                return 0
-            elif line == "__INVALID_INPUT__":
-                sys.stdout.write("Invalid input, please try again..\n")
-                return 0
-            elif line == "__NON_EMPTY__":
-                return 0
-            elif len(line):
-                if self.reading_board:
-                    self.recent_board += line + '\n'
-                else:
-                    sys.stdout.write(line + '\n')
-        return 1
+        read_prompt = False
+        while not read_prompt:
+            for stdout in rlist:
+                output += os.read(stdout.fileno(), 1024).decode(sys.stdout.encoding)
+            for line in output.split('\n'):
+                if line.startswith("__BOARD_SIZE__"):
+                    self.board_size = int(line.split(' ')[1])
+                elif line.startswith("__GAME_OVER__"):
+                    self.game_running = False
+                    self.player_won = int(line.split()[1])
+                    read_prompt = True
+                elif line == "__BOARD_BEGIN__":
+                    self.recent_board = ""
+                    self.reading_board = True
+                elif line == "__BOARD_END__":
+                    self.reading_board = False
+                elif line in ["__TURN__", "__INVALID_INPUT__", "__NON_EMPTY__"]:
+                    read_prompt = True
+                elif len(line):
+                    if self.reading_board:
+                        self.recent_board += line + '\n'
+                    else:
+                        sys.stdout.write(line + '\n')
 
+""" The hex GUI is a canvas that shows the tiles. """
 class HexGUI(tk.Canvas):
     def __init__(self, master, board_size, *args, **kwargs):
         self.board_size = board_size
@@ -120,6 +117,7 @@ class HexGUI(tk.Canvas):
 
         self.tag_bind(tile, '<Button-1>', lambda _: self.master.clicked(i, j))
 
+""" The tk application """
 class HexApp(tk.Frame):
     def __init__(self, master=None):
         tk.Frame.__init__(self, master)
@@ -186,5 +184,3 @@ if __name__ == "__main__":
             sys.exit("Failed to make.")
 
     main()
-
-#updateLoop(startHex())
