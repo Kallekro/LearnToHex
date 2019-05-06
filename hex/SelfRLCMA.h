@@ -142,7 +142,14 @@ public:
 
 	double sigma() const {
 		return std::sqrt(m_var);
-		//return m_rate;
+	}
+	
+	double rate() const {
+		return m_rate; 
+	}
+
+	RealVector mean() const {
+		return m_mean;
 	}
 
 	RealVector generatePolicy()const{
