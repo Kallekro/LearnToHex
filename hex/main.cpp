@@ -240,7 +240,7 @@ int main () {
 
         if (t%10 == 0) {
             // save the model
-            saveStrategy("best", player1);
+            saveStrategy("forpython", player1);
             version++;
         }
 
@@ -299,12 +299,12 @@ int main () {
 	}
 
     return 0;
-#elif 0 // Test with human player strategy
-#if BUILD_FOR_PYTHON
-    std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
-#endif
+#elif BUILD_FOR_PYTHON
     shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
     Hex::HumanStrategy human_player;
+    loadStrategy("forpython.model", player2);
+
+    std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
     while (game.takeTurn({&human_player, &player2})) {
         std::cout << game.asciiState() << std::endl;
