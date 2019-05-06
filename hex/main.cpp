@@ -67,10 +67,9 @@ public:
 		double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
 			logW += game.logImportanceWeight({&strategy0, &strategy1});
-            //double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
-            //if (u > 0.5) {
-            //    game.FlipBoard();
-            //}
+            if (shark::random::coinToss(shark::random::globalRng())) {
+                game.FlipBoard();
+            }
         }
 
 		double r = game.getRank(1);
@@ -96,7 +95,7 @@ private:
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2}, {10,3,3});
+		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4}, {10,3,3});
 		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,3,3});
 		m_moveOut.setStructure(m_moveLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
@@ -115,7 +114,7 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*2),0.0);
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*4),0.0);
 		for(int i = 0; i < Hex::BOARD_SIZE; i++){
 			for(int j = 0; j < Hex::BOARD_SIZE; j++){
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
@@ -125,7 +124,7 @@ public:
 					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
-				else if(field(i,j).tileState == Hex::Empty ) { // Channel where other players tiles are 1
+				else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
                     if (m_color == Hex::Red) {
                         inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
                     } else {
@@ -133,16 +132,12 @@ public:
                     }
 				}
 
-				//else if (i == 0 || i == Hex::BOARD_SIZE-1) {
-                        ////(m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        ////|| (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					//inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
-				//}
-                //else if (j == 0 || j == Hex::BOARD_SIZE-1) {
-                        ////(m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1))
-                        ////|| (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					//inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
-				//}
+				if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+				}
+                if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
+				}
 			}
 		}
 
@@ -302,6 +297,7 @@ int main () {
 #elif BUILD_FOR_PYTHON
     shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
     Hex::HumanStrategy human_player;
+
     loadStrategy("forpython.model", player2);
 
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
