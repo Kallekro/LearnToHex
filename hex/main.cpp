@@ -125,7 +125,7 @@ public:
 					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
-				else if(field(i,j).tileState == Hex::Empty ) { // Channel where other players tiles are 1
+				else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
                     if (m_color == Hex::Red) {
                         inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
                     } else {
