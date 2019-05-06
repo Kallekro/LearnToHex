@@ -233,16 +233,12 @@ int main () {
            playGame();
         }
 
-        if (t%10 == 0) {
-            // save the model
-            saveStrategy("forpython", player1);
-            version++;
-        }
 
         if(t % 10 == 0 ) {
             game.reset();
 
             player1.setParameters(cma.mean());
+            saveStrategy("best", player1);
             //player2.setParameters(cma.generatePolicy());
 
            // std::cout << game.asciiState() << std::endl;
@@ -302,7 +298,7 @@ int main () {
 
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
-    while (game.takeTurn({&human_player, &player2})) {
+    while (game.takeTurn({&player1, &human_player})) {
         std::cout << game.asciiState() << std::endl;
     }
     std::cout << game.asciiState() << std::endl;

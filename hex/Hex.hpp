@@ -389,7 +389,6 @@ namespace Hex {
         unsigned ActivePlayer() {return m_activePlayer;}
 
         bool takeTurn(std::vector<Strategy*> const& strategies) {
-            m_next_player();
             //logging
             m_lastStep.moveState = m_gameboard;
             m_lastStep.activePlayer = m_activePlayer;
@@ -419,6 +418,7 @@ namespace Hex {
             m_lastStep.moveAction = moveAction;
 		    m_lastStep.logProb = std::log(moveProbs(moveAction));
             m_log.push_back(m_lastStep);
+            m_next_player();
             return !won;
         }
 
