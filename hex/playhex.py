@@ -35,6 +35,16 @@ class HexInterface():
         self.recent_board = ""
         self.reading_board = False
         self.game_running = True
+        self.player_won = -1
+
+    def restart(self):
+        self.recent_board = ""
+        self.reading_board = False
+        self.game_running = True
+        self.player_won = -1
+        closeHex(self.hex_process)
+        self.hex_process = startHex()
+
 
     def sendInput(self, inp):
         if not self.game_running: return
@@ -54,6 +64,7 @@ class HexInterface():
                 self.board_size = int(line.split(' ')[1])
             elif line.startswith("__GAME_OVER__"):
                 self.game_running = False
+                self.player_won = int(line.split()[1])
                 return 0
             elif line == "__BOARD_BEGIN__":
                 self.recent_board = ""
@@ -125,10 +136,19 @@ class HexApp(tk.Frame):
         if self.hex_interface.board_size == 0:
             sys.exit("Must read beginning output from hex before creating widgets.")
 
+        restart_button = tk.Button(self, text="Restart", command=self.reset)
+        restart_button.grid()
+
         self.hex_GUI = HexGUI(self, self.hex_interface.board_size, background='white', bd=3, relief=tk.SUNKEN)
         self.hex_GUI.grid()
 
+        self.win_stringvar = tk.StringVar()
+        self.win_stringvar.set("")
+        win_label = tk.Label(self, textvariable=self.win_stringvar)
+        win_label.grid()
+
     def drawBoard(self):
+        self.hex_GUI.delete(tk.ALL)
         board = self.hex_interface.recent_board.split('\n')
         for i in range(len(board)):
             for j in range(len(board[i])):
@@ -137,7 +157,17 @@ class HexApp(tk.Frame):
     def clicked(self, i, j):
         hexinput = chr(ord('A') + j) + str(i+1)
         self.hex_interface.sendInput(hexinput)
-        self.hex_GUI.delete(tk.ALL)
+        self.drawBoard()
+        if not self.hex_interface.game_running:
+            if self.hex_interface.player_won == 0:
+                self.win_stringvar.set("Blue won!")
+            elif self.hex_interface.player_won == 1:
+                self.win_stringvar.set("Red won!")
+
+    def reset(self):
+        self.win_stringvar.set("")
+        self.hex_interface.restart()
+        self.hex_interface.readOutput()
         self.drawBoard()
 
 def main():
