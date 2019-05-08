@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 5;
+    static const unsigned BOARD_SIZE = 3;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -62,7 +62,7 @@ namespace Hex {
             }
         }
 
-        LineSegment* ReferLineSegment(Tile* newref) {
+        void ReferLineSegment(Tile* newref) {
             if (m_linesegment != nullptr) {
                 m_linesegment = nullptr;
                 m_tile_ref = newref;
@@ -115,7 +115,7 @@ namespace Hex {
         shark::blas::matrix<Tile> moveState;
     };
 
-    class Strategy{
+    class Strategy {
     public:
         virtual shark::RealVector getMoveAction(shark::blas::matrix<Tile>const& field) = 0;
         virtual std::size_t numParameters() const = 0;
@@ -123,16 +123,13 @@ namespace Hex {
     };
 
     //random strategy for testing
-    class RandomStrategy: public Strategy{
+    class RandomStrategy : public Strategy {
     public:
         shark::RealVector getMoveAction(shark::blas::matrix<Tile>const&) override{
             return shark::RealVector(BOARD_SIZE * BOARD_SIZE, 1.0);
         }
 
-        std::size_t numParameters() const override{
-            return 1;
-        }
-
+        std::size_t numParameters() const override{ return 1; }
         void setParameters(shark::RealVector const&) override{}
     };
 
@@ -194,10 +191,7 @@ namespace Hex {
             return movefield;
         }
 
-        std::size_t numParameters() const override{
-            return 1;
-        }
-
+        std::size_t numParameters() const override{ return 1; }
         void setParameters(shark::RealVector const&) override{}
     };
 

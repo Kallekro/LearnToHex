@@ -295,9 +295,16 @@ int main (int argc, char* argv[]) {
     Hex::HumanStrategy human_player;
 
     if (argc == 2 && strlen(argv[1])) {
-        loadStrategy(argv[1], player1);
+        try {
+            loadStrategy(argv[1], player1);
+        }
+        catch (Exception& e) {
+            std::cerr << e.what() << std::endl;
+            exit(2);
+        }
     }
 
+    game.reset();
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
     while (game.takeTurn({&player1, &human_player})) {
