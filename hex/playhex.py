@@ -137,9 +137,16 @@ class HexApp(tk.Frame):
             sys.exit("Must read beginning output from hex before creating widgets.")
 
         modelframe = tk.Frame(self)
-        modelframe.grid(row=0, column=0)
-        loadmodel_button = tk.Button(modelframe, text="Load model", command=self.loadModel)
-        loadmodel_button.grid(row=0, column=0, sticky="W")
+        modelframe.grid(row=0, column=0, sticky="W", padx=(0, 5))
+        tk.Label(modelframe, text="Model:").grid(row=0, column=1, columnspan=2, sticky="W")
+        loadmodel_button = tk.Button(modelframe, text= u"\u1A00", command=self.loadModel,padx=0)
+        loadmodel_button.grid(row=1, column=0, sticky="W")
+        self.model_stringvar = tk.StringVar()
+        if len(self.hex_interface.model):
+            self.model_stringvar.set(self.hex_interface.model)
+        else:
+            self.model_stringvar.set("None")
+        tk.Label(modelframe, textvariable=self.model_stringvar).grid(row=1, column=1, sticky="W")
 
         restart_button = tk.Button(self, text="Restart", command=self.reset)
         restart_button.grid(row=0, column=1)
@@ -179,6 +186,7 @@ class HexApp(tk.Frame):
         filename = filedialog.askopenfilename(initialdir=__file__, title="Select model", filetypes=(("model", "*.model"), ("all files", "*.*")))
         if filename:
             self.hex_interface.model = filename
+            self.model_stringvar.set(os.path.basename(self.hex_interface.model))
             self.reset()
 
 def main(model):
