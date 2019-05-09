@@ -4,6 +4,7 @@
 import sys, os, subprocess, select, atexit, time, argparse
 import tkinter as tk
 from tkinter import filedialog
+from tkinter import messagebox
 
 """ Close a pipe if open. """
 def closePipe(pipe):
@@ -34,12 +35,32 @@ def startHex(model=""):
 class HexInterface():
     def __init__(self, model=""):
         self.model = model
-        self.hex_process = startHex(model)
+        self.startHexSafe()
         self.board_size = 0
         self.recent_board = ""
         self.reading_board = False
         self.game_running = True
         self.player_won = -1
+
+    def startHexSafe(self):
+        self.hex_process = startHex(self.model)
+        rlist, wlist, xlist = select.select([self.hex_process.stdout], [], [])
+        while True:
+            output = ""
+            for stdout in rlist:
+                output += os.read(stdout.fileno(), 1024).decode(sys.stdout.encoding)
+            for line in output.split('\n'):
+                if line == "__MODEL_GOOD__":
+                    rlist, wlist, xlist = select.select([], [self.hex_process.stdin], [])
+                    os.write(wlist[0].fileno(), '__BEGIN__\n'.encode(sys.stdin.encoding))
+                    return
+                elif line == "__MODEL_BAD__":
+                    self.model = ""
+                    messagebox.showerror("Model error", "The model could not be loaded. Are the dimensions correct?")
+                    self.hex_process = startHex()
+                    rlist, wlist, xlist = select.select([], [self.hex_process.stdin], [])
+                    os.write(wlist[0].fileno(), '__BEGIN__\n'.encode(sys.stdin.encoding))
+                    return
 
     def restart(self):
         self.recent_board = ""
@@ -47,7 +68,7 @@ class HexInterface():
         self.game_running = True
         self.player_won = -1
         closeHex(self.hex_process)
-        self.hex_process = startHex(self.model)
+        self.startHexSafe()
 
     def sendInput(self, inp):
         if not self.game_running: return
@@ -58,9 +79,9 @@ class HexInterface():
     def readOutput(self):
         if not self.game_running: return
         rlist, wlist, xlist = select.select([self.hex_process.stdout], [], [])
-        output = ""
         read_prompt = False
         while not read_prompt:
+            output = ""
             for stdout in rlist:
                 output += os.read(stdout.fileno(), 1024).decode(sys.stdout.encoding)
             for line in output.split('\n'):
@@ -77,6 +98,8 @@ class HexInterface():
                     self.reading_board = False
                 elif line in ["__TURN__", "__INVALID_INPUT__", "__NON_EMPTY__"]:
                     read_prompt = True
+                elif line == "__MODEL_GOOD__":
+                    pass
                 elif len(line):
                     if self.reading_board:
                         self.recent_board += line + '\n'
@@ -88,13 +111,11 @@ class HexGUI(tk.Canvas):
     def __init__(self, master, board_size, *args, **kwargs):
         self.board_size = board_size
         self.tile_line_coeff = 10
-        self.tile_size = 10 * 4
-        self.tiles_start_pos = (30, 30)
-        self.board = [[None for _ in range(board_size)] for _ in range(board_size)]
-        tk.Canvas.__init__(self, master,  width=board_size * self.tile_size * 1.5, height=board_size * self.tile_size, *args, **kwargs)
-
-        #self.bind("<Button-1>", self.master.clicked)
-
+        self.tile_size = self.tile_line_coeff * 4
+        self.tiles_start_pos = (self.tile_line_coeff * 3, self.tile_line_coeff)
+        canvas_width = board_size * self.tile_size + board_size * 0.5 * self.tile_size
+        canvas_height = board_size * self.tile_size - (board_size - 2) * self.tile_line_coeff
+        tk.Canvas.__init__(self, master,  width=canvas_width, height=canvas_height, *args, **kwargs)
 
     def drawTile(self, i, j, tile_state):
         x = j * self.tile_size + self.tiles_start_pos[0] + i * self.tile_size / 2
@@ -142,10 +163,7 @@ class HexApp(tk.Frame):
         loadmodel_button = tk.Button(modelframe, text= u"\u1A00", command=self.loadModel,padx=0)
         loadmodel_button.grid(row=1, column=0, sticky="W")
         self.model_stringvar = tk.StringVar()
-        if len(self.hex_interface.model):
-            self.model_stringvar.set(self.hex_interface.model)
-        else:
-            self.model_stringvar.set("None")
+        self.updateModelStringvar()
         tk.Label(modelframe, textvariable=self.model_stringvar).grid(row=1, column=1, sticky="W")
 
         restart_button = tk.Button(self, text="Restart", command=self.reset)
@@ -158,6 +176,12 @@ class HexApp(tk.Frame):
         self.win_stringvar.set("")
         win_label = tk.Label(self, textvariable=self.win_stringvar)
         win_label.grid(row=2, column=0, columnspan=2)
+
+    def updateModelStringvar(self):
+        if len(self.hex_interface.model):
+            self.model_stringvar.set(os.path.basename(os.path.normpath(self.hex_interface.model)))
+        else:
+            self.model_stringvar.set("None")
 
     def drawBoard(self):
         self.hex_GUI.delete(tk.ALL)
@@ -186,8 +210,8 @@ class HexApp(tk.Frame):
         filename = filedialog.askopenfilename(initialdir=__file__, title="Select model", filetypes=(("model", "*.model"), ("all files", "*.*")))
         if filename:
             self.hex_interface.model = filename
-            self.model_stringvar.set(os.path.basename(self.hex_interface.model))
             self.reset()
+            self.updateModelStringvar()
 
 def main(model):
     root = tk.Tk()
