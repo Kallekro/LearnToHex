@@ -1,11 +1,9 @@
 
-#include "SelfRLCMA.h"
+#include "SelfRLCMA2.h"
 #include "SelfRLTDL.h"
 
 #include "Hex.hpp"
 
-//benchmark functions
-#include <shark/ObjectiveFunctions/Benchmarks/Sphere.h>
 #include <vector>
 
 #include <shark/Models/LinearModel.h>//single dense layer
@@ -27,7 +25,7 @@ private:
 	Strategy m_baseStrategy;
 public:
 	SelfPlayTwoPlayer(Game const& game, Strategy const& strategy)
-	:m_game(game), m_baseStrategy(strategy){
+	: m_game(game), m_baseStrategy(strategy){
 		m_features |= CAN_PROPOSE_STARTING_POINT;
 		m_features |= IS_NOISY;
         m_features |= HAS_FIRST_DERIVATIVE;
@@ -61,21 +59,17 @@ public:
 
 		//simulate
 		game.reset();
-
-		//reward of player 1
-		//importance weighted reward
-		double logW = 0.0;
+		//double logW = 0.0;
 		while(game.takeTurn({&strategy0, &strategy1})){
-			logW += game.logImportanceWeight({&strategy0, &strategy1});
+			//logW += game.logImportanceWeight({&strategy0, &strategy1});
             if (shark::random::coinToss(shark::random::globalRng())) {
                 game.FlipBoard();
             }
         }
 
 		double r = game.getRank(1);
-		double y = 2*r - 1;
-
-		double rr = 1/(1+std::exp(y*logW));
+		//double y = 2*r - 1;
+		//double rr = 1/(1+std::exp(y*logW));
         return r;
 	}
 };
@@ -212,6 +206,8 @@ int main (int argc, char* argv[]) {
 
     auto playGame=[&]() {
         game.reset();
+        player1.setParameters(cma.mean());
+        player2.setParameters(cma.mean());
         std::cout << game.asciiState() << std::endl;
         while (game.takeTurn({&player1, &player2})) {
             std::cout << game.asciiState() << std::endl;
@@ -219,7 +215,7 @@ int main (int argc, char* argv[]) {
         std::cout << game.asciiState() << std::endl;
         std::cout << "End of example game." << std::endl;
     };
-#ifndef BUILD_FOR_PYTHON // training test
+#ifdef HEX_TRAINER // training test
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
@@ -295,15 +291,15 @@ int main (int argc, char* argv[]) {
     Hex::HumanStrategy human_player;
 
     if (argc == 2 && strlen(argv[1])) {
-        try {
-            loadStrategy(argv[1], player1);
-        }
-        catch (Exception& e) {
-            std::cerr << e.what() << std::endl;
+        loadStrategy(argv[1], player1);
+        if (d != player1.numParameters()) {
+            std::cout << "__MODEL_BAD__" << std::endl;
             exit(2);
         }
     }
-
+    std::cout << "__MODEL_GOOD__" << std::endl;
+    std::string response = "";
+    std::getline(std::cin, response);
     game.reset();
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
@@ -311,34 +307,27 @@ int main (int argc, char* argv[]) {
         std::cout << game.asciiState() << std::endl;
     }
     std::cout << game.asciiState() << std::endl;
-#if BUILD_FOR_PYTHON
+
     std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
-#else
-    if (game.getRank(0)) {
-        std::cout << "You won!" << std::endl;
-    } else {
-        std::cout << "You lost." << std::endl;
-    }
-    return 0;
 #endif
-#elif 0 // Test for win percentage of random players
-    Hex::RandomStrategy random_player2;
-    float wins_vs_random = 0;
-    float games_vs_random_played = 0;
-	for (std::size_t t = 0; t != 50000; ++t){
-        game.reset();
-        while (game.takeTurn({&random_player, &random_player2})) { }
-        games_vs_random_played++;
-        if (game.getRank(Hex::Blue)) {
-            wins_vs_random++;
-        }
-        if (t%10000 == 0) {
-            std::cout << games_vs_random_played << " games played. blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
-        }
-	}
-    std::cout << "done." << std::endl;
-    std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
-#endif
+// Test for win percentage of random players
+//    Hex::RandomStrategy random_player2;
+//    float wins_vs_random = 0;
+//    float games_vs_random_played = 0;
+//	for (std::size_t t = 0; t != 50000; ++t){
+//        game.reset();
+//        while (game.takeTurn({&random_player, &random_player2})) { }
+//        games_vs_random_played++;
+//        if (game.getRank(Hex::Blue)) {
+//            wins_vs_random++;
+//        }
+//        if (t%10000 == 0) {
+//            std::cout << games_vs_random_played << " games played. blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
+//        }
+//	}
+//    std::cout << "done." << std::endl;
+//    std::cout << "blue winrate: " << wins_vs_random / games_vs_random_played << std::endl;
+//
 
 
 }
