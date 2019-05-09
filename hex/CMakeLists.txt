@@ -19,9 +19,3 @@ add_executable(hex_python main.cpp Hex.hpp)
 set_property(TARGET hex_python PROPERTY CXX_STANDARD 11)
 target_compile_definitions(hex_python PRIVATE BUILD_FOR_PYTHON)
 target_link_libraries(hex_python ${SHARK_LIBRARIES})
-
-# Executable for pole benchmark
-add_executable(polebench main.cpp)
-set_property(TARGET polebench PROPERTY CXX_STANDARD 11)
-target_compile_definitions(polebench PRIVATE POLE_BENCHMARK)
-target_link_libraries(polebench ${SHARK_LIBRARIES})
