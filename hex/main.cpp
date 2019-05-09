@@ -1,5 +1,5 @@
 
-#include "SelfRLCMA.h"
+#include "SelfRLCMA2.h"
 #include "SelfRLTDL.h"
 
 #include "Hex.hpp"
@@ -30,7 +30,6 @@ public:
 	:m_game(game), m_baseStrategy(strategy){
 		m_features |= CAN_PROPOSE_STARTING_POINT;
 		m_features |= IS_NOISY;
-        m_features |= HAS_FIRST_DERIVATIVE;
 	}
 
     Game getGame() const {
@@ -68,7 +67,7 @@ public:
 		while(game.takeTurn({&strategy0, &strategy1})){
 			logW += game.logImportanceWeight({&strategy0, &strategy1});
             if (shark::random::coinToss(shark::random::globalRng())) {
-                game.FlipBoard();
+                //game.FlipBoard();
             }
         }
 
@@ -95,8 +94,9 @@ private:
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4}, {10,3,3});
+		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 1}, {10,3,3});
 		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,3,3});
+//        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
 		m_moveOut.setStructure(m_moveLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
 		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
 	}
@@ -114,30 +114,31 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*4),0.0);
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*1),0.0);
 		for(int i = 0; i < Hex::BOARD_SIZE; i++){
 			for(int j = 0; j < Hex::BOARD_SIZE; j++){
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
+
                     if (m_color == Hex::Red ) {
-					    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
+					    inputs(1*(j*Hex::BOARD_SIZE+i)) = 1.0;
                     } else{
-					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
+					    inputs(1*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
 				else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
-                    if (m_color == Hex::Red) {
-                        inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
-                    } else {
-                        inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
-                    }
+                    //if (m_color == Hex::Red) {
+                        //inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
+                    //} else {
+                        //inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+                    //}
 				}
 
-				if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
-				}
-                if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
-				}
+				//if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					//inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+				//}
+                //if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					//inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
+				//}
 			}
 		}
 
@@ -212,6 +213,8 @@ int main (int argc, char* argv[]) {
 
     auto playGame=[&]() {
         game.reset();
+        player1.setParameters(cma.mean());
+        player2.setParameters(cma.mean());
         std::cout << game.asciiState() << std::endl;
         while (game.takeTurn({&player1, &player2})) {
             std::cout << game.asciiState() << std::endl;
