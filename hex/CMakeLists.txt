@@ -11,6 +11,7 @@ include(${SHARK_USE_FILE})
 add_executable(hex main.cpp Hex.hpp)
 set_property(TARGET hex PROPERTY CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
+target_compile_definitions(hex PRIVATE HEX_TRAINER)
 target_link_libraries(hex ${SHARK_LIBRARIES})
 
 # Executable for python application
@@ -18,3 +19,9 @@ add_executable(hex_python main.cpp Hex.hpp)
 set_property(TARGET hex_python PROPERTY CXX_STANDARD 11)
 target_compile_definitions(hex_python PRIVATE BUILD_FOR_PYTHON)
 target_link_libraries(hex_python ${SHARK_LIBRARIES})
+
+# Executable for pole benchmark
+add_executable(polebench main.cpp)
+set_property(TARGET polebench PROPERTY CXX_STANDARD 11)
+target_compile_definitions(polebench PRIVATE POLE_BENCHMARK)
+target_link_libraries(polebench ${SHARK_LIBRARIES})
