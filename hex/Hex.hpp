@@ -13,7 +13,6 @@ namespace Hex {
         Empty = 2
     };
 
-
     class LineSegment {
     public:
         bool Connected_A = false;
@@ -246,13 +245,13 @@ namespace Hex {
         unsigned int m_sample_move_action(shark::RealVector const& action_prob)const{
             double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
 		    double cumulant = 0.0;
-            for (std::size_t i=0; i != action_prob.size(); i++) {
+            for (std::size_t i=0; i < action_prob.size(); i++) {
                 cumulant += action_prob(i);
                 if (cumulant > u) {
                     return i;
                 }
             }
-            return action_prob.size() - 1;
+            action_prob.size() - 1;
         }
 
         bool m_take_move_action(unsigned move_action) {
@@ -351,7 +350,7 @@ namespace Hex {
                     m_gameboard(i,j).reset();
                 }
             }
-            //m_activePlayer = 1;
+            //m_activePlayer = 0;
             // random starting player
             if (shark::random::coinToss(shark::random::globalRng())) {
                 m_activePlayer = 0;
@@ -420,9 +419,11 @@ namespace Hex {
         double logImportanceWeight(std::vector<Strategy*> const& strategies){
 	        auto strategy = strategies[m_lastStep.activePlayer];
 	        auto feasibleMoves = m_feasible_move_actions(m_lastStep.moveState);
-	        shark::RealVector moveProbs =m_feasible_probabilies(strategy->getMoveAction(m_lastStep.moveState), feasibleMoves);
-
-	        double logProb = std::log(moveProbs(m_lastStep.moveAction));
+	        auto moveProbs =m_feasible_probabilies(strategy->getMoveAction(m_lastStep.moveState), feasibleMoves);
+            double logProb = 0.0;
+            if (moveProbs(m_lastStep.moveAction) != 0) {
+                logProb = std::log(moveProbs(m_lastStep.moveAction));
+            }
 	        return logProb - m_lastStep.logProb;
 
         }
