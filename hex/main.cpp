@@ -28,7 +28,6 @@ public:
 	: m_game(game), m_baseStrategy(strategy){
 		m_features |= CAN_PROPOSE_STARTING_POINT;
 		m_features |= IS_NOISY;
-        m_features |= HAS_FIRST_DERIVATIVE;
 	}
 
     Game getGame() const {
@@ -59,18 +58,18 @@ public:
 
 		//simulate
 		game.reset();
-		//double logW = 0.0;
-		while(game.takeTurn({&strategy0, &strategy1})){
-			//logW += game.logImportanceWeight({&strategy0, &strategy1});
-            if (shark::random::coinToss(shark::random::globalRng())) {
-                game.FlipBoard();
-            }
+		double logW = 0.0;
+        double max = Hex::BOARD_SIZE*Hex::BOARD_SIZE;
+		double count = 0;
+        while(game.takeTurn({&strategy0, &strategy1})){
+            count++;
+			logW += game.logImportanceWeight({&strategy0, &strategy1});
         }
 
 		double r = game.getRank(1);
-		//double y = 2*r - 1;
-		//double rr = 1/(1+std::exp(y*logW));
-        return r;
+		double y = 2*r - 1;
+		double rr = 1/(1+std::exp(y*logW));
+        return r; 
 	}
 };
 
@@ -78,9 +77,8 @@ public:
 
 class NetworkStrategy: public Hex::Strategy{
 private:
-	Conv2DModel<RealVector, TanhNeuron> m_moveLayer;
-	Conv2DModel<RealVector, TanhNeuron> m_moveLayer2;
-    Conv2DModel<RealVector, TanhNeuron> m_moveLayer3;
+	Conv2DModel<RealVector, TanhNeuron> m_inLayer;
+	LinearModel<RealVector, TanhNeuron> m_hiddenLayer1;
 	LinearModel<RealVector> m_moveOut;
 
 	ConcatenatedModel<RealVector> m_moveNet ;
@@ -89,10 +87,11 @@ private:
 
 public:
 	NetworkStrategy(){
-		m_moveLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 4}, {10,3,3});
-		m_moveLayer2.setStructure(m_moveLayer.outputShape(),{20,3,3});
-		m_moveOut.setStructure(m_moveLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
-		m_moveNet = m_moveLayer >> m_moveLayer2 >> m_moveOut;
+		m_inLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2}, {20, 3,1});
+		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), {18,Hex::BOARD_SIZE,Hex::BOARD_SIZE});
+//        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
+		m_moveOut.setStructure(m_inLayer.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
+        m_moveNet = m_inLayer >> m_moveOut;
 	}
 
     void save(OutArchive & archive) {
@@ -108,14 +107,15 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*4),0.0);
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*2),0.0);
 		for(int i = 0; i < Hex::BOARD_SIZE; i++){
 			for(int j = 0; j < Hex::BOARD_SIZE; j++){
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
+
                     if (m_color == Hex::Red ) {
-					    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
+					    inputs(1*(j*Hex::BOARD_SIZE+i)) = 1.0;
                     } else{
-					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
+					    inputs(1*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
 				else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
@@ -126,12 +126,12 @@ public:
                     }
 				}
 
-				if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
-				}
-                if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
-				}
+				//if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					//inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
+				//}
+                //if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
+					//inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
+				//}
 			}
 		}
 
@@ -180,7 +180,7 @@ void saveStrategy(std::string model_path, NetworkStrategy& strag) {
 int main (int argc, char* argv[]) {
     Hex::Game game(false);
 
-    shark::random::globalRng().seed(1338);
+    shark::random::globalRng().seed(time(NULL));
 
     NetworkStrategy player1;
     NetworkStrategy player2;
@@ -225,7 +225,7 @@ int main (int argc, char* argv[]) {
 	for (std::size_t t = 0; t != 50000; ++t){
         //playGame();
 
-        if (t% 50 == 0) {
+        if (t% 500 == 0) {
            playGame();
         }
 
@@ -262,6 +262,7 @@ int main (int argc, char* argv[]) {
             }
             std::cout << "blue winrate last " << last_wins.size() << " games: " << sum / last_wins.size() << std::endl;
             std::cout<<"Game " << t << "\nSigma: " << cma.sigma() << std::endl;
+            std::cout<<"Value " << cma.solution().value << std::endl;
             std::cout<< "Learn: " << cma.rate() << std::endl;
         }
 
