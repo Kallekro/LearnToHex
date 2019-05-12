@@ -5,7 +5,7 @@
 #include <memory>
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 3;
+    static const unsigned BOARD_SIZE = 4;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -151,7 +151,7 @@ namespace Hex {
     }
 
 
-    class HumanStrategy: public Strategy {
+    class HumanStrategy : public Strategy {
     public:
         shark::RealVector getMoveAction(shark::blas::matrix<Tile>const& field) override {
             #if BUILD_FOR_PYTHON
