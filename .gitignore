@@ -1,0 +1,5 @@
+*.bin
+*.ipch
+*.cmake
+*.make
+*.check_cache
