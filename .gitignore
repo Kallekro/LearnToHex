@@ -3,3 +3,7 @@
 *.cmake
 *.make
 *.check_cache
+
+hex/build/*
+polebench/build/*
+
