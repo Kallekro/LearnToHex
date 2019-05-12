@@ -12,11 +12,10 @@ using namespace shark;
 /////   CMA Polebalancing ObjectiveFunction    /////
 class SinglePoleObjectiveFunctionCMA : public SingleObjectiveFunction {
 public:
-	SinglePoleObjectiveFunctionCMA(std::size_t numberOfVariables, NetworkStrategy strat)
+	SinglePoleObjectiveFunctionCMA(std::size_t numberOfVariables)
     : m_numberOfVariables(numberOfVariables)  {
 		m_features |= CAN_PROPOSE_STARTING_POINT;
 		m_features |= IS_NOISY;
-		m_strat = strat;
 	}
 	std::string name() const
 	{ return "SinglePoleTest"; }
@@ -42,7 +41,7 @@ public:
 
 		auto x0 = subrange(x, 0, numberOfVariables());
 		strat1.setParameters(x0);
-		double maxcount = 100000.0;
+		double maxcount = 200.0;
 		double count1 = 0;
 		double count2 = 0;
 		shark::RealVector v(numberOfVariables(), 0.0);
@@ -53,11 +52,10 @@ public:
 			double out = strat1.getMoveAction(v);
 			singlePole1.move(abs(out));
 		}
-		return 1 - (count1/maxcount) ;
+		return -count1; 
     }
 private:
 	std::size_t m_numberOfVariables;
-	NetworkStrategy m_strat;
 };
 
 //////////    Custom objective functions   //////////
