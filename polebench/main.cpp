@@ -22,7 +22,7 @@ int main() {
 
 	DataLogger counterLogger("count_log.txt");
 	counterLogger.OutStream << "Counts per episodes,Episode,Count" << std::endl;
-#if 0
+#if 1
 	////////////// TD-LAMBDA /////////////////	
 	// algorithm parameters
 	double rate = 0.001;
@@ -123,7 +123,7 @@ int main() {
 		}	
 	}
 }
-#elif 1
+#elif 0
 	CMA cma;
     cma.init(single_pole, single_pole.proposeStartingPoint());
 
