@@ -124,13 +124,12 @@ void saveStrategy(std::string model_path, NetworkStrategy& strag) {
     ofs.close();
 }
 
-
 int main() {
 
     shark::random::globalRng().seed(time(NULL));
-    double eps = 0.1;
+    double eps = 0.05;
 
-    int num_episodes = 500000;
+    int num_episodes = 10000;
     double rate = 0.1;
 
     Hex::Game game(false);
@@ -143,6 +142,7 @@ int main() {
         game.reset();
         bool won = false;
         strat1.setParameters(weights);
+       // std::cout << weights[0] << std::endl << std::endl << std::endl << std::endl << std::endl << std::endl;
         // for computing derivatives
         std::vector<RealVector> states;
         RealVector rewards;
@@ -153,9 +153,10 @@ int main() {
 
         // save state
         RealVector input(2*(Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
-        strat1.createInput(game.getGameBoard(), game.ActivePlayer(), input);
+        //strat1.createInput(game.getGameBoard(), game.ActivePlayer(), input);
         states.push_back(input);
         values.push_back(strat1.evaluateNetwork(input));
+        rewards.push_back(0);
 
         while (!won) {
             //std::cout << step_i << ", ";
@@ -194,6 +195,7 @@ int main() {
                     } else {
                         value = 1 - strat1.evaluateNetwork(input);
                     }
+                    //value = strat1.evaluateNetwork(input);
                     move_values.push_back(std::pair<double, int>(value, i));
                     fieldCopy(x,y).tileState = Hex::Empty;
                 }
@@ -219,13 +221,13 @@ int main() {
                         ri--;
                     }
                 }
-
             } else {
                 for(int i=0; i < move_values.size(); i++) {
                     if(game.ActivePlayer() == Hex::Blue && move_values[i].first >= chosen_move.first ) {
                         chosen_move = move_values[i];
                     } else if (game.ActivePlayer() == Hex::Red && move_values[i].first <= chosen_move.first) {
                         chosen_move = move_values[i];
+                        chosen_move.first = 1 - chosen_move.first;
                     }
                 }
             }
@@ -254,18 +256,20 @@ int main() {
             if(!won ) {
                 rewards.push_back(0);
             } else {
-                rewards.push_back(1);
-                //if (game.ActivePlayer() == Hex::Blue) {
-                //
-                //} else {
-                //    rewards.push_back(0);
-                //}
+                //rewards.push_back(1);
+                if (game.ActivePlayer() == Hex::Red) {
+                    rewards.push_back(1);
+                } else {
+                    rewards.push_back(0);
+                }
             }
             // save value
             nextValues.push_back(chosen_move.first);
 
             step_i++;
         }
+        nextValues.push_back(rewards[step_i]);
+
         //std::cout << std::endl;
         if (episode % 100 == 0) {
             std::cout << "Game " << episode << std::endl;
@@ -287,6 +291,7 @@ int main() {
             }
             getBatchElement(stateBatch, i) = states[i];
             getBatchElement(valueBatch, i)(0) = values(i);
+            //std::cout << states[i] << ": " << values(i) << std::endl;
         }
 
 
@@ -294,19 +299,23 @@ int main() {
 //
         //std::cout << "SIZE statebatch: " <<  batchSize(stateBatch) << std::endl;
        // std::cout << "SIZE coeff size2: " <<  strat1.getModel().outputShape().numElements() << std::endl;
+//
+        //std::cout << "Rewards " << rewards << std::endl;
+        //std::cout << "Values " << values << std::endl;
+        //std::cout << "Next values " << nextValues << std::endl;
 
         // computes td-errors
         RealMatrix coeffs(step_i+1, strat1.getModel().outputShape().numElements()); // b td_main.cpp:286
+        column(coeffs, 0) = rewards + nextValues - values;
         //RealVector coeffVec = rewards + nextValues - values; // TODO: values[::-1]
         //column(coeffs, 0) = coeffVec;
-        for (int i=0; i<step_i; i++) {
-            coeffs(i, 0) =  rewards(i) + nextValues(i) - values(i);
-        }
-        //std::cout << "coeffss" << coeffs << std::endl;
-
-        //std::cout << "outputshape " << strat1.getModel().outputShape().numElements() << std::endl;
+        //for (int i=0; i<step_i; i++) {
+        //    coeffs(i, 0) =  rewards(i) + nextValues(i) - values(i);
+        //}
 
 
+
+        //std::cout << "Coeffs " << coeffs << std::endl;
 
         // batch of
         boost::shared_ptr<State> state = strat1.createState();
