@@ -7,12 +7,19 @@ project(hex)
 find_package(Shark REQUIRED)
 include(${SHARK_USE_FILE})
 
-# Executable
+# Executable main1
 add_executable(hex main.cpp Hex.hpp)
 set_property(TARGET hex PROPERTY CXX_STANDARD 11)
 set(CMAKE_BUILD_TYPE Debug)
 target_compile_definitions(hex PRIVATE HEX_TRAINER)
 target_link_libraries(hex ${SHARK_LIBRARIES})
+
+# Executable main2
+add_executable(tdhex td_main.cpp Hex.hpp)
+set_property(TARGET tdhex PROPERTY CXX_STANDARD 11)
+set(CMAKE_BUILD_TYPE Debug)
+target_link_libraries(tdhex ${SHARK_LIBRARIES})
+
 
 # Executable for python application
 add_executable(hex_python main.cpp Hex.hpp)

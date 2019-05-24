@@ -1,11 +1,13 @@
 #ifndef HEX_HPP
 #define HEX_HPP
+
 #include <shark/LinAlg/Base.h>
+#include <shark/Core/Random.h>
 #include <string>
 #include <memory>
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 4;
+    static const unsigned BOARD_SIZE = 5;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -269,6 +271,7 @@ namespace Hex {
                 m_activePlayer = (m_activePlayer + 1) % 2;
             }
         }
+
         void m_initializeboard() {
             for (int i=0; i < BOARD_SIZE; i++) {
                 for (int j=0; j < BOARD_SIZE; j++) {
@@ -276,6 +279,7 @@ namespace Hex {
                 }
             }
         }
+
 
         Tile* m_get_neighbour(int x, int y) {
             if (x < 0 || x >= BOARD_SIZE || y < 0 || y >= BOARD_SIZE || m_gameboard(x,y).tileState == Empty) {
@@ -343,6 +347,26 @@ namespace Hex {
             return m_log;
         }
 
+	    shark::blas::matrix<Tile> getGameBoard() {
+            return m_gameboard;
+        }
+
+        shark::RealVector getFlatGameBoard() {
+            shark::RealVector gb(Hex::BOARD_SIZE*Hex::BOARD_SIZE, 0.0);
+            for (int i=0; i<Hex::BOARD_SIZE; i++) {
+                for (int j=0; j<Hex::BOARD_SIZE; j++) {
+                    if (m_gameboard(i,j).tileState != Empty) {
+                        gb(BOARD_SIZE * i + j) = 1.0;
+                    }
+                }
+            }
+            return gb;
+        }
+
+        shark::RealVector getFeasibleMoves() {
+            return m_feasible_move_actions(m_gameboard);
+        }
+
         void reset() {
             // reset board
             for (std::size_t i = 0; i < BOARD_SIZE; i++) {
@@ -350,13 +374,13 @@ namespace Hex {
                     m_gameboard(i,j).reset();
                 }
             }
-            //m_activePlayer = 0;
+            m_activePlayer = 0;
             // random starting player
-            if (shark::random::coinToss(shark::random::globalRng())) {
-                m_activePlayer = 0;
-            } else {
-                m_activePlayer = 1;
-            }
+            //if (shark::random::coinToss(shark::random::globalRng())) {
+            //    m_activePlayer = 0;
+            //} else {
+            //    m_activePlayer = 1;
+            //}
             m_playerWon = -1;
             turns_taken = 0;
             m_log = std::vector<Log>();
@@ -381,12 +405,7 @@ namespace Hex {
 
         unsigned ActivePlayer() {return m_activePlayer;}
 
-        bool takeTurn(std::vector<Strategy*> const& strategies) {
-            //logging
-            m_lastStep.moveState = m_gameboard;
-            m_lastStep.activePlayer = m_activePlayer;
-
-            turns_taken++;
+        bool takeStrategyTurn(std::vector<Strategy*> const& strategies) {
             // get player information
             auto strategy = strategies[m_activePlayer];
             // find all feasible moves
@@ -395,21 +414,32 @@ namespace Hex {
             shark::RealVector moveProbs = m_feasible_probabilies(strategy->getMoveAction(m_gameboard), feasibleMoves);
             // sample an action and take turn
             double moveAction = m_sample_move_action(moveProbs);
+
+            return takeTurn(moveAction);
+        }
+
+        bool takeTurn(double moveAction) {
+            //logging
+            m_lastStep.moveState = m_gameboard;
+            m_lastStep.activePlayer = m_activePlayer;
+
+            turns_taken++;
+
             bool won;
             try {
-                won = m_take_move_action(moveAction);
+                won = m_take_move_action(moveAction); // b Hex.hpp:430
             } catch (std::invalid_argument& e) {
-                std::cerr << "exception: " << e.what() << std::endl;
-                std::cout << feasibleMoves << std::endl;
-                std::cout << moveAction << std::endl;
-                std::cout << moveProbs << std::endl;
+                // std::cerr << "exception: " << e.what() << std::endl;
+                // std::cout << feasibleMoves << std::endl;
+                // std::cout << moveAction << std::endl;
+                // std::cout << moveProbs << std::endl;
                 throw(e);
             }
             if (won) {
                 m_playerWon = m_activePlayer;
             }
             m_lastStep.moveAction = moveAction;
-		    m_lastStep.logProb = std::log(moveProbs(moveAction));
+		    //m_lastStep.logProb = std::log(moveProbs(moveAction));
             m_log.push_back(m_lastStep);
             m_next_player();
             return !won;

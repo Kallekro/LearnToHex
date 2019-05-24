@@ -61,7 +61,7 @@ public:
 		double logW = 0.0;
         double max = Hex::BOARD_SIZE*Hex::BOARD_SIZE;
 		double count = 0;
-        while(game.takeTurn({&strategy0, &strategy1})){
+        while(game.takeStrategyTurn({&strategy0, &strategy1})){
             count++;
 			logW += game.logImportanceWeight({&strategy0, &strategy1});
         }
@@ -113,9 +113,9 @@ public:
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
 
                     if (m_color == Hex::Red ) {
-					    inputs(1*(j*Hex::BOARD_SIZE+i)) = 1.0;
+					    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
                     } else{
-					    inputs(1*(i*Hex::BOARD_SIZE+j)) = 1.0;
+					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
                     }
                 }
 				else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
@@ -209,7 +209,7 @@ int main (int argc, char* argv[]) {
         player1.setParameters(cma.mean());
         player2.setParameters(cma.mean());
         std::cout << game.asciiState() << std::endl;
-        while (game.takeTurn({&player1, &player2})) {
+        while (game.takeStrategyTurn({&player1, &player2})) {
             std::cout << game.asciiState() << std::endl;
         }
         std::cout << game.asciiState() << std::endl;
@@ -238,7 +238,7 @@ int main (int argc, char* argv[]) {
             //player2.setParameters(cma.generatePolicy());
 
            // std::cout << game.asciiState() << std::endl;
-            while (game.takeTurn({&player1, &random_player})) {
+            while (game.takeStrategyTurn({&player1, &random_player})) {
              //   std::cout << game.asciiState() << std::endl;
             }
             std::cout << game.asciiState() << std::endl;
@@ -282,7 +282,7 @@ int main (int argc, char* argv[]) {
 	player2.setParameters(cma.generatePolicy());
 	game.reset();
 	std::cout<<game.asciiState()<<std::endl;
-	while(game.takeTurn({&player1, &player2})){
+	while(game.takeStrategyTurn({&player1, &player2})){
 		std::cout<<game.asciiState()<<std::endl;
 	}
 
@@ -304,7 +304,7 @@ int main (int argc, char* argv[]) {
     game.reset();
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
-    while (game.takeTurn({&player1, &human_player})) {
+    while (game.takeStrategyTurn({&player1, &human_player})) {
         std::cout << game.asciiState() << std::endl;
     }
     std::cout << game.asciiState() << std::endl;
