@@ -4,6 +4,8 @@
 
 #include "Hex.hpp"
 
+#include "strategies.hpp"
+
 #include <vector>
 
 #include <shark/Models/LinearModel.h>//single dense layer
@@ -69,7 +71,7 @@ public:
 		double r = game.getRank(1);
 		double y = 2*r - 1;
 		double rr = 1/(1+std::exp(y*logW));
-        return r; 
+        return r;
 	}
 };
 
@@ -161,14 +163,16 @@ public:
 
 };
 
-void loadStrategy(std::string model_path, NetworkStrategy& strag) {
+template<class Strategy>
+void loadStrategy(std::string model_path, Strategy& strag) {
     std::ifstream ifs(model_path);
     boost::archive::polymorphic_text_iarchive ia(ifs);
     strag.load(ia);
     ifs.close();
 }
 
-void saveStrategy(std::string model_path, NetworkStrategy& strag) {
+template<class Strategy>
+void saveStrategy(std::string model_path, Strategy& strag) {
     std::ostringstream name;
     name << model_path << ".model" ;
     std::ofstream ofs(name.str());
@@ -182,6 +186,9 @@ int main (int argc, char* argv[]) {
 
     shark::random::globalRng().seed(time(NULL));
 
+    NetworkStrategy dummyStrat;
+
+#ifdef HEX_TRAINER // training test
     NetworkStrategy player1;
     NetworkStrategy player2;
     player1.setColor(0);
@@ -215,7 +222,6 @@ int main (int argc, char* argv[]) {
         std::cout << game.asciiState() << std::endl;
         std::cout << "End of example game." << std::endl;
     };
-#ifdef HEX_TRAINER // training test
     float wins_vs_random = 0;
     float games_vs_random_played = 0;
     std::deque<float> last_wins;
@@ -288,15 +294,23 @@ int main (int argc, char* argv[]) {
 
     return 0;
 #elif BUILD_FOR_PYTHON
+#define TDSTRATEGY 1
+#if TDSTRATEGY
+    typedef TDNetworkStrategy STRATEGY;
+#else
+    typedef NetworkStrategy STRATEGY;
+#endif
     shark::random::globalRng().seed(std::chrono::system_clock::now().time_since_epoch().count());
     Hex::HumanStrategy human_player;
+    STRATEGY player1;
 
     if (argc == 2 && strlen(argv[1])) {
-        loadStrategy(argv[1], player1);
-        if (d != player1.numParameters()) {
-            std::cout << "__MODEL_BAD__" << std::endl;
-            exit(2);
-        }
+        loadStrategy<STRATEGY>(argv[1], player1);
+        // TODO: Fix
+        //if (dummyStrat.numParameters() != player1.numParameters()) {
+        //    std::cout << "__MODEL_BAD__" << std::endl;
+        //    exit(2);
+        //}
     }
     std::cout << "__MODEL_GOOD__" << std::endl;
     std::string response = "";
@@ -304,9 +318,23 @@ int main (int argc, char* argv[]) {
     game.reset();
     std::cout << "__BOARD_SIZE__ " << Hex::BOARD_SIZE << std::endl;
     std::cout << game.asciiState() << std::endl;
+#if TDSTRATEGY
+    bool won = false;
+    while (!won) {
+        if (game.ActivePlayer() == Hex::Blue) {
+            std::pair<double, int> chosen_move = player1.getMoveAction(game.getFeasibleMoves(), game.getGameBoard(), Hex::Blue);
+            won = !game.takeTurn(chosen_move.second);
+        } else {
+            won = !game.takeStrategyTurn({NULL, &human_player});
+        }
+        std::cout << game.asciiState() << std::endl;
+    }
+
+#else
     while (game.takeStrategyTurn({&player1, &human_player})) {
         std::cout << game.asciiState() << std::endl;
     }
+#endif
     std::cout << game.asciiState() << std::endl;
 
     std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
