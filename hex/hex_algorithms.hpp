@@ -102,11 +102,11 @@ public:
         }
 
         RealVector nextValues = subrange(values, 1, values.size()+1);
-        if (m_game.ActivePlayer() == Hex::Red) {
-            nextValues[nextValues.size()-1] = 1.0;
-        } else {
-            nextValues[nextValues.size()-1] = 0.0;
-        }
+        //if (m_game.ActivePlayer() == Hex::Red) {
+        //    nextValues[nextValues.size()-1] = 1.0;
+        //} else {
+        //    nextValues[nextValues.size()-1] = 0.0;
+        //}
 
         RealVector statePoint(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);
