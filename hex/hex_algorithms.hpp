@@ -63,7 +63,7 @@ public:
             m_strategy.createInput(m_game.getGameBoard(), activePlayer, input);
 
 
-            std::pair<double, int> chosen_move = m_strategy.getChosenMove( m_game, m_game.getGameBoard(), activePlayer, true);
+            std::pair<double, int> chosen_move = m_strategy.getChosenMove( m_game.getFeasibleMoves(m_game.getGameBoard()), m_game.getGameBoard(), activePlayer, true);
             // take action
             try {
                 if (chosen_move.second < 0 || chosen_move.second >= Hex::BOARD_SIZE*Hex::BOARD_SIZE) {
@@ -86,7 +86,7 @@ public:
                     }
 
                     if (!won) { // opponent take turn
-                        std::pair<double, int> opp_chosen_move = m_strategy.getChosenMove(m_game, m_game.getGameBoard(), m_game.ActivePlayer(), true);
+                        std::pair<double, int> opp_chosen_move = m_strategy.getChosenMove(m_game.getFeasibleMoves(m_game.getGameBoard()), m_game.getGameBoard(), m_game.ActivePlayer(), true);
                         won = !m_game.takeTurn( opp_chosen_move.second );
                     }
 

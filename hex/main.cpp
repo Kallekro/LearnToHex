@@ -7,7 +7,7 @@ using namespace shark;
 using namespace Hex;
 
 #define NUM_EPSIODES_CMA 50000
-#define NUM_EPSIODES_TD 1000000
+#define NUM_EPSIODES_TD 10000000
 
 /******************\
  *  Base Trainer  *
@@ -129,7 +129,7 @@ public:
         bool won = false;
         while (!won) {
             // TODO: Flip board for player 2! (?)
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, game.getGameBoard(), game.ActivePlayer(), false);
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(game.getGameBoard()), game.getGameBoard(), game.ActivePlayer(), false);
             won = !game.takeTurn(chosen_move.second);
             std::cout << game.asciiState() << std::endl;
         }
@@ -144,7 +144,7 @@ public:
         bool won = false;
         while (!won) {
             if (game.ActivePlayer() == Blue) {
-                std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, game.getGameBoard(), Blue, false);
+                std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(game.getGameBoard()), game.getGameBoard(), Blue, false);
                 won = !game.takeTurn(chosen_move.second);
             } else {
                 won = !game.takeStrategyTurn({NULL, &random_player});
@@ -221,7 +221,7 @@ void playHexTDVsHuman(std::string model) {
     bool won = false;
     while (!won) {
         if (game.ActivePlayer() == Blue) {
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, game.getGameBoard(), Blue, false);
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(game.getGameBoard()), game.getGameBoard(), Blue, false);
             won = !game.takeTurn(chosen_move.second);
         } else {
             won = !game.takeStrategyTurn({NULL, &human_player});

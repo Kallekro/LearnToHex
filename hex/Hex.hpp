@@ -9,7 +9,7 @@
 using namespace shark;
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 11;
+    static const unsigned BOARD_SIZE = 5;
 
     enum TileState : unsigned {
         Blue = 0,
