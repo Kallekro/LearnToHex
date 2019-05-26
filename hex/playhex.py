@@ -26,15 +26,16 @@ def closeHex(hex_process):
         pass
 
 """ Start the hex process """
-def startHex(model="", what="cmaplay"):
+def startHex(model="", what=""):
     hex_process = subprocess.Popen(['build/hex', what, model], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     atexit.register(lambda: closeHex(hex_process))
     return hex_process
 
 """ The interface between the hex subprocess and the main process. """
 class HexInterface():
-    def __init__(self, model=""):
+    def __init__(self, model="", what=""):
         self.model = model
+        self.what = what
         self.startHexSafe()
         self.board_size = 0
         self.recent_board = ""
@@ -43,7 +44,7 @@ class HexInterface():
         self.player_won = -1
 
     def startHexSafe(self):
-        self.hex_process = startHex(self.model)
+        self.hex_process = startHex(self.model, self.what)
         rlist, wlist, xlist = select.select([self.hex_process.stdout], [], [])
         while True:
             output = ""
@@ -142,11 +143,11 @@ class HexGUI(tk.Canvas):
 
 """ The tk application """
 class HexApp(tk.Frame):
-    def __init__(self, master=None, model=""):
+    def __init__(self, master=None, model="", what=""):
         tk.Frame.__init__(self, master)
         self.grid(padx=5, pady=5)
 
-        self.hex_interface = HexInterface(model)
+        self.hex_interface = HexInterface(model, what)
         self.hex_interface.readOutput()
 
         self.createWidgets()
@@ -213,9 +214,9 @@ class HexApp(tk.Frame):
             self.reset()
             self.updateModelStringvar()
 
-def main(model):
+def main(model, algorithm):
     root = tk.Tk()
-    app = HexApp(root, model)
+    app = HexApp(root, model, algorithm)
     app.master.title("Hex")
     app.mainloop()
 
@@ -223,10 +224,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play hex.")
     parser.add_argument("--model", dest="model", default="")
     parser.add_argument("--make", dest="make", action='store_true')
+    parser.add_argument("--algorithm", dest="algorithm", default="cmaplay")
     args = parser.parse_args()
 
     if args.make:
         if subprocess.run(["cd build && make hex_python && cd .."], shell=True).returncode != 0:
             sys.exit("Failed to make.")
 
-    main(args.model)
+    main(args.model, args.algorithm)
