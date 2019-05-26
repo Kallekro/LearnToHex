@@ -26,8 +26,8 @@ def closeHex(hex_process):
         pass
 
 """ Start the hex process """
-def startHex(model=""):
-    hex_process = subprocess.Popen(['build/hex_python', model], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+def startHex(model="", what="cmaplay"):
+    hex_process = subprocess.Popen(['build/hex', what, model], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     atexit.register(lambda: closeHex(hex_process))
     return hex_process
 
