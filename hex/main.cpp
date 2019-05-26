@@ -129,7 +129,7 @@ public:
         bool won = false;
         while (!won) {
             // TODO: Flip board for player 2! (?)
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(), game.getGameBoard(), game.ActivePlayer());
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, game.getGameBoard(), game.ActivePlayer(), false);
             won = !game.takeTurn(chosen_move.second);
             std::cout << game.asciiState() << std::endl;
         }
@@ -144,7 +144,7 @@ public:
         bool won = false;
         while (!won) {
             if (game.ActivePlayer() == Blue) {
-                std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(), game.getGameBoard(), Blue);
+                std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, game.getGameBoard(), Blue, false);
                 won = !game.takeTurn(chosen_move.second);
             } else {
                 won = !game.takeStrategyTurn({NULL, &random_player});
@@ -190,7 +190,7 @@ void trainingLoop(std::string modelName) {
         if (i % 100 == 0) {
             trainer.saveModel(modelName);
         }
-        if (i % 500 == 0) {
+        if (i % 50 == 0) {
             trainer.playExampleGame();
         }
         trainer.step();
@@ -221,7 +221,7 @@ void playHexTDVsHuman(std::string model) {
     bool won = false;
     while (!won) {
         if (game.ActivePlayer() == Blue) {
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(), game.getGameBoard(), Blue);
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, game.getGameBoard(), Blue, false);
             won = !game.takeTurn(chosen_move.second);
         } else {
             won = !game.takeStrategyTurn({NULL, &human_player});

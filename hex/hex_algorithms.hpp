@@ -63,7 +63,7 @@ public:
             m_strategy.createInput(m_game.getGameBoard(), activePlayer, input);
 
 
-            std::pair<double, int> chosen_move = m_strategy.getChosenMove( m_game.getFeasibleMoves(), m_game.getGameBoard(), activePlayer );
+            std::pair<double, int> chosen_move = m_strategy.getChosenMove( m_game, m_game.getGameBoard(), activePlayer, true);
             // take action
             try {
                 if (chosen_move.second < 0 || chosen_move.second >= Hex::BOARD_SIZE*Hex::BOARD_SIZE) {
@@ -86,7 +86,7 @@ public:
                     }
 
                     if (!won) { // opponent take turn
-                        std::pair<double, int> opp_chosen_move = m_strategy.getChosenMove(m_game.getFeasibleMoves(), m_game.getGameBoard(), m_game.ActivePlayer());
+                        std::pair<double, int> opp_chosen_move = m_strategy.getChosenMove(m_game, m_game.getGameBoard(), m_game.ActivePlayer(), true);
                         won = !m_game.takeTurn( opp_chosen_move.second );
                     }
 
@@ -102,11 +102,11 @@ public:
         }
 
         RealVector nextValues = subrange(values, 1, values.size()+1);
-        if (m_game.ActivePlayer() == Hex::Red) {
-            nextValues[nextValues.size()-1] = 1.0;
-        } else {
-            nextValues[nextValues.size()-1] = 0.0;
-        }
+        //if (m_game.ActivePlayer() == Hex::Red) {
+        //    nextValues[nextValues.size()-1] = 1.0;
+        //} else {
+        //    nextValues[nextValues.size()-1] = 0.0;
+        //}
 
         RealVector statePoint(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);

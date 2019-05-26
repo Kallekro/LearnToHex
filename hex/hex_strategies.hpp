@@ -229,22 +229,44 @@ public:
         }
     }
 
+    blas::vector<Hex::Tile> reverseVector(blas::vector<Hex::Tile> vec) {
+        blas::vector<Hex::Tile> vecOut(vec.size());
+        for (int i=0; i < vec.size(); i++) {
+            vecOut(vec.size() - i - 1) = vec(i);
+        }
+        return vecOut;
+    }
+
     shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile>const& field) {
-        int n = Hex::BOARD_SIZE;
-        int f = floor(n / 2);
-        int c = ceil(n / 2);
-        shark::blas::matrix<Hex::Tile> fieldCopy(n, n);
+        //int n = Hex::BOARD_SIZE;
+        //int f = floor(n / 2);
+        //int c = ceil(n / 2);
+        //shark::blas::matrix<Hex::Tile> fieldCopy(n, n);
+        ////RealVector input(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
+        ////createInput(field, Hex::Red, input);
+        ////std::cout <<"Before: " <<  input << std::endl;
+        //for (int i=0; i < f; i++) {
+        //    for (int j=0; j < c; j++) {
+        //        Hex::TileState tmp = field(i,j).tileState;
+        //        fieldCopy(i,j).tileState = field(j, n - 1 - i).tileState;
+        //        fieldCopy(j, n - 1 - i).tileState = field(n - 1 - i, n - 1 - j ).tileState;
+        //        fieldCopy(n - 1 - i, n - 1 - j).tileState = field(n - 1 - j, i).tileState;
+        //        fieldCopy(n-1-j, i).tileState = tmp;
+        //    }
+        //}
+        //input.clear();
+        //createInput(fieldCopy, Hex::Red, input);
+        //std::cout <<"After: " <<  input << std::endl;
+
         //RealVector input(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         //createInput(field, Hex::Red, input);
         //std::cout <<"Before: " <<  input << std::endl;
-        for (int i=0; i < f; i++) {
-            for (int j=0; j < c; j++) {
-                Hex::TileState tmp = field(i,j).tileState;
-                fieldCopy(i,j).tileState = field(j, n - 1 - i).tileState;
-                fieldCopy(j, n - 1 - i).tileState = field(n - 1 - i, n - 1 - j ).tileState;
-                fieldCopy(n - 1 - i, n - 1 - j).tileState = field(n - 1 - j, i).tileState;
-                fieldCopy(n-1-j, i).tileState = tmp;
-            }
+        shark::blas::matrix<Hex::Tile> fieldCopy(BOARD_SIZE, BOARD_SIZE);
+        for (int i=0; i < BOARD_SIZE; i++) {
+            column(fieldCopy, i) = reverseVector(row(field, i));
+            //for (int j=0; j < BOARD_SIZE; j++) {
+            //    fieldCopy(BOARD_SIZE - i, BOARD_SIZE - 1 - i) = field(i, j);
+            //}
         }
         //input.clear();
         //createInput(fieldCopy, Hex::Red, input);
@@ -259,10 +281,10 @@ public:
     }
 
 
-    std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves) {
+    std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves, bool epsilon_greedy) {
         std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? -1 : 1) , -1);
         double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
-        if (u < EPSILON) {
+        if (epsilon_greedy && u < EPSILON) {
             int ri = shark::random::uni(shark::random::globalRng(), 0, sum(feasible_moves)-1);
             for (int i=0; i < feasible_moves.size(); i++) {
                 if (feasible_moves(i)) {
@@ -323,13 +345,13 @@ public:
         return move_values;
     }
 
-    std::pair<double, int> getChosenMove(RealVector feasibleMoves, shark::blas::matrix<Tile> field, unsigned activePlayer) {
+    std::pair<double, int> getChosenMove(RealVector feasibleMoves, shark::blas::matrix<Tile> field, unsigned activePlayer, bool epsilon_greedy) {
         if (activePlayer == Hex::Red) {
             field = rotateField(field); // if player 2, rotate view
         }
         shark::blas::matrix<Tile> fieldCopy = getFieldCopy(field);
         std::vector<std::pair<double, int>> move_values = getMoveValues(fieldCopy, activePlayer, feasibleMoves);
-        std::pair<double, int> chosen_move = chooseMove(move_values, activePlayer, feasibleMoves);
+        std::pair<double, int> chosen_move = chooseMove(move_values, activePlayer, feasibleMoves, epsilon_greedy);
         return chosen_move;
     }
 
