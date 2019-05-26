@@ -20,6 +20,7 @@ using namespace shark;
 
 #define NUM_EPSIODES 1000000
 #define LEARN_RATE 0.1
+#define LAMBDA 0.7
 
 /*class TDNetworkStrategy{
 private:
@@ -224,46 +225,58 @@ int main() {
         std::vector<RealVector> states;
         RealVector rewards;
         RealVector values;
-        RealVector nextValues;
 
         int step_i = 0;
 
         // save state
-        RealVector input(2*(Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
-        //strat1.createInput(game.getGameBoard(), game.ActivePlayer(), input);
-        //states.push_back(input);
-        //values.push_back(strat1.evaluateNetwork(input));
-        //rewards.push_back(0);
+        RealVector input(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
+        unsigned activePlayer = game.ActivePlayer();
 
         while (!won) {
             //std::cout << step_i << ", ";
-            shark::blas::matrix<Hex::Tile> field = game.getGameBoard();
-            unsigned int activePlayer = game.ActivePlayer();
 
-            // save state S
-            strat1.createInput(game.getGameBoard(), game.ActivePlayer(), input);
-            states.push_back(input);
+            activePlayer = game.ActivePlayer();
+            // encode the gameboard
+            strat1.createInput(game.getGameBoard(), activePlayer, input);
+
+            //states.push_back(input);
             // save value of state S
-            values.push_back(strat1.evaluateNetwork(input));
+            //values.push_back(strat1.evaluateNetwork(input));
 
-            std::pair<double, int> chosen_move = strat1.getMoveAction(game.getFeasibleMoves(), game.getGameBoard(), activePlayer);
+
+            std::pair<double, int> chosen_move = strat1.getMoveAction( game.getFeasibleMoves(), game.getGameBoard(), activePlayer );
             // take action
             try {
                 if (chosen_move.second < 0 || chosen_move.second >= Hex::BOARD_SIZE*Hex::BOARD_SIZE) {
                     std::cout << "Chosen move for player 1 " << chosen_move.second << " out of range." << std::endl;
-                    //for (int i=0; i < move_values.size(); i++) {
-                    //    std::cout << move_values[i].first;
-                    //}
                     std::cout << std::endl;
                     exit(1);
                 } else {
-                    // FLIP
-                    //if (activePlayer == Hex::Red) {
-                    //    int x = chosen_move.second % Hex::BOARD_SIZE;
-                    //    int y = chosen_move.second / Hex::BOARD_SIZE;
-                    //    chosen_move.second = y*Hex::BOARD_SIZE + x;
-                    //}
+
+                    // Take the chosen action
                     won = !game.takeTurn(chosen_move.second);
+                    // push after-state value and after-state
+
+
+                    // if player 1, save the afterstate and value
+                    if (activePlayer == Hex::Blue) {
+                        strat1.createInput(game.getGameBoard(), activePlayer, input);
+                        if (!won) {
+                            rewards.push_back(0.0);
+                        } else {
+                            rewards.push_back(1.0);
+                        }
+                        states.push_back(input);
+                        values.push_back(chosen_move.first);
+                    }
+
+
+                    if (!won) { // opponent take turn
+                        std::pair<double, int> opp_chosen_move = strat1.getMoveAction(game.getFeasibleMoves(), game.getGameBoard(), game.ActivePlayer());
+                        won = !game.takeTurn( opp_chosen_move.second );
+                    }
+
+
 
                     if (episode % 1000 == 0) {
                         std::cout << game.asciiState() << std::endl;
@@ -309,22 +322,22 @@ int main() {
             //    }
             //}
             // save next value
-            if(!won ) {
-                rewards.push_back(0);
-            } else {
-                if (game.ActivePlayer() == Hex::Blue) {
-                    rewards.push_back(1);
-                } else {
-                    rewards.push_back(0);
-                }
-            }
-            strat1.createInput(game.getGameBoard(), game.ActivePlayer(), input);
-            nextValues.push_back(strat1.evaluateNetwork(input));
 
             step_i++;
+            //strat1.createInput(game.getGameBoard(), game.ActivePlayer(), input);
+            //std::cout << input << std::endl;
         }
-        //nextValues.push_back(rewards[step_i]);
 
+        RealVector nextValues = subrange(values, 1, values.size()+1);
+        if (game.ActivePlayer() == Hex::Red) {
+            nextValues[nextValues.size()-1] = 1.0;
+        } else {
+            nextValues[nextValues.size()-1] = 0.0;
+        }
+        //std::cout << nextValues << std::endl;
+        //nextValues.push_back(rewards[step_i]);
+        //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
+        //sleep(2);
         //std::cout << std::endl;
         if (episode % 10 == 0) {
             std::cout << "Game " << episode << std::endl;
@@ -337,7 +350,7 @@ int main() {
             //std::cin >> in;
         }
 
-        RealVector statePoint(2*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
+        RealVector statePoint(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);
         // batch of states
         Batch<RealVector>::type stateBatch = Batch<RealVector>::createBatch(statePoint, states.size());
@@ -347,15 +360,20 @@ int main() {
         //std::cout << "ASSERT " << (values.size() == states.size())  << std::endl;
         //std::cout << values.size() << ", " << states.size() << std::endl;
         for (int i=0; i < states.size(); i++) {
-            if (states[i].size() != 2*(Hex::BOARD_SIZE*Hex::BOARD_SIZE)) {
+            if (states[i].size() != 3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE)) {
                 std::cout << "state " << i << std::endl;
             }
             getBatchElement(stateBatch, i) = states[i];
             getBatchElement(valueBatch, i)(0) = values(i);
         }
 
+        RealVector eTrace(step_i, 0.0);
 
-        //std::cout << "R: " << rewards.size() << " V: " << values.size() << " NV: " << nextValues.size() << std::endl;
+        for (int k=1 ; k < step_i; k++) {
+            eTrace(k) = pow(LAMBDA, step_i - k);
+        }
+
+
 //
         //std::cout << "SIZE statebatch: " <<  batchSize(stateBatch) << std::endl;
        // std::cout << "SIZE coeff size2: " <<  strat1.getModel().outputShape().numElements() << std::endl;
@@ -366,7 +384,7 @@ int main() {
 
         // computes td-errors
         RealMatrix coeffs(states.size(), strat1.getModel().outputShape().numElements()); // b td_main.cpp:286
-        column(coeffs, 0) = rewards + nextValues - values;
+        column(coeffs, 0) = (rewards + nextValues - values); //* eTrace;
         //RealVector coeffVec = rewards + nextValues - values; // TODO: values[::-1]
         //column(coeffs, 0) = coeffVec;
         //for (int i=0; i<step_i; i++) {
@@ -382,7 +400,10 @@ int main() {
         strat1.getModel().eval(stateBatch, valueBatch, *state); // compiles
 
         RealVector derivative;
-        strat1.getModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs, *state, derivative); // b td_main.cpp:271
+
+        strat1.getModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs , *state, derivative); // b td_main.cpp:271
+
+
         //std::cout << "States: " << stateMat << std::endl;
         //std::cout << "Rewards: " << rewards << std::endl;
         //std::cout << "Values: " << values << std::endl;
@@ -391,7 +412,7 @@ int main() {
         //std::cout << strat1.getModel().numberOfParameters() << std::endl;
         //std::cout << "WWW  " << weights << std::endl;
         //if (game.ActivePlayer() == Hex::Blue) {
-            weights -= LEARN_RATE*derivative;
+        weights += LEARN_RATE * derivative;
         //}
     }
 

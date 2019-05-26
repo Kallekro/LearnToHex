@@ -11,12 +11,12 @@
 
 using namespace shark;
 
-#define EPSILON 0.1
+#define EPSILON 0.05
 
 class TDNetworkStrategy{
 private:
-    LinearModel<RealVector, FastSigmoidNeuron> m_inLayer;
-    LinearModel<RealVector, FastSigmoidNeuron> m_hiddenLayer;
+    LinearModel<RealVector, RectifierNeuron> m_inLayer;
+    LinearModel<RealVector, RectifierNeuron> m_hiddenLayer;
     LinearModel<RealVector, FastSigmoidNeuron> m_outLayer;
 
     ConcatenatedModel<RealVector> m_moveNet;
@@ -26,8 +26,8 @@ private:
 public:
 	TDNetworkStrategy(){
 		//m_inLayer.setStructure({Hex::BOARD_SIZE, Hex::BOARD_SIZE, 2}, {20, 3, 3});
-        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE*2, 10);
-        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 20);
+        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE * 3, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
+        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 80 );
         m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
 
@@ -37,26 +37,39 @@ public:
     void createInput( shark::blas::matrix<Hex::Tile>const& field, unsigned int activePlayer, RealVector& inputs) {
         for (int i=0; i < Hex::BOARD_SIZE; i++) {
             for (int j=0; j< Hex::BOARD_SIZE; j++) {
-                if(field(i,j).tileState == activePlayer){ // Channel where players own tiles are 1
-                    // FLIP
-                    //if (activePlayer == Hex::Red ) {
-                    //    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
-                    //} else{
-                    //    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
-                    //}
-                    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
+                if(field(i,j).tileState == activePlayer){       // Channel where players own tiles(looks as blue) are 1
+                    inputs(3*(i*Hex::BOARD_SIZE+j)) = 1.0;
                 }
-                else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
-                    // FLIP
-                    //if (activePlayer == Hex::Red) {
-                    //    inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
-                    //} else {
-                    //    inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
-                    //}
-                    inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+                else if(field(i,j).tileState != Hex::Empty ) { // Channel where other(red) players tiles are 1
+                    inputs(3*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+                } else {                                     // Empty tile
+                    inputs(3*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
                 }
             }
         }
+    }
+
+    shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile>const& field) {
+            int n = Hex::BOARD_SIZE;
+            int f = floor(n / 2);
+            int c = ceil(n / 2);
+            shark::blas::matrix<Hex::Tile> fieldCopy(n, n);
+            //RealVector input(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
+            //createInput(field, Hex::Red, input);
+            //std::cout <<"Before: " <<  input << std::endl;
+            for (int i=0; i < f; i++) {
+                for (int j=0; j < c; j++) {
+                    Hex::TileState tmp = field(i,j).tileState;
+                    fieldCopy(i,j).tileState = field(j, n - 1 - i).tileState;
+                    fieldCopy(j, n - 1 - i).tileState = field(n - 1 - i, n - 1 - j ).tileState;
+                    fieldCopy(n - 1 - i, n - 1 - j).tileState = field(n - 1 - j, i).tileState;
+                    fieldCopy(n-1-j, i).tileState = tmp;
+                }
+            }
+            //input.clear();
+            //createInput(fieldCopy, Hex::Red, input);
+            //std::cout <<"After: " <<  input << std::endl;
+            return fieldCopy;
     }
 
     double evaluateNetwork(RealVector inputs) {
@@ -67,8 +80,7 @@ public:
 
 
     std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values,
-                                    unsigned activeplayer, RealVector feasible_moves,
-                                    blas::matrix<Hex::Tile> field) {
+                                    unsigned activeplayer, RealVector feasible_moves) {
         std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Hex::Blue ? -1 : 1) , -1);
         double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
         if (u < EPSILON) {
@@ -76,13 +88,8 @@ public:
             for (int i=0; i < feasible_moves.size(); i++) {
                 if (feasible_moves(i)) {
                     if (ri == 0) {
-                        blas::matrix<Hex::Tile> fieldCopy = getFieldCopy(field);
 
-                        fieldCopy(i % Hex::BOARD_SIZE, i / Hex::BOARD_SIZE).tileState = (Hex::TileState)activeplayer;
-                        RealVector input(2*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
-                        createInput(fieldCopy, activeplayer, input);
-                        double val = evaluateNetwork(input);
-                        chosen_move = std::pair<double, int>(val, i);
+                        chosen_move = std::pair<double, int>(move_values[i].first, i);
                         break;
                     }
                     ri--;
@@ -90,11 +97,6 @@ public:
             }
         } else {
             for(int i=0; i < move_values.size(); i++) {
-                //if(move_values[i].first >= chosen_move.first ) {
-                //    chosen_move = move_values[i];
-                //}
-
-                //std::cout << move_values[i].first << ", " << move_values[i].second << std::endl;
 
                 if(activeplayer == Hex::Blue && move_values[i].first >= chosen_move.first ) {
                     chosen_move = move_values[i];
@@ -122,7 +124,7 @@ public:
     std::vector<std::pair<double, int>> getMoveValues(shark::blas::matrix<Hex::Tile> fieldCopy, unsigned activePlayer, RealVector feasible_moves) {
         std::vector<std::pair<double, int>> move_values;
         int inputIdx=0;
-        RealVector input(2*(Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
+        RealVector input(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
         for (int i=0; i<feasible_moves.size(); i++) {
             int x = i % Hex::BOARD_SIZE;
             int y = i / Hex::BOARD_SIZE;
@@ -134,7 +136,7 @@ public:
                 if (activePlayer == Hex::Blue ) {
                     value = this->evaluateNetwork(input);
                 } else {
-                    value = 1 - this->evaluateNetwork(input);
+                    value = this->evaluateNetwork(input);
                 }
                 move_values.push_back(std::pair<double, int>(value, i));
                 fieldCopy(x,y).tileState = Hex::Empty;
@@ -144,6 +146,9 @@ public:
     }
 
     std::pair<double, int> getMoveAction(RealVector feasibleMoves, shark::blas::matrix<Hex::Tile> field, unsigned activePlayer) {
+        if (activePlayer == Hex::Red) {
+            field = rotateField(field); // if player 2, rotate view
+        }
         shark::blas::matrix<Hex::Tile> fieldCopy = getFieldCopy(field);
         std::vector<std::pair<double, int>> move_values = getMoveValues(fieldCopy, activePlayer, feasibleMoves);
         std::pair<double, int> chosen_move = chooseMove(move_values, activePlayer, feasibleMoves);
