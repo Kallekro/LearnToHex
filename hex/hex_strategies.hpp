@@ -9,8 +9,6 @@
 
 using namespace shark;
 
-#define EPSILON 0.1
-
 namespace Hex {
 
 /*******************\
@@ -111,11 +109,18 @@ private:
 
     unsigned m_color;
 
+    double m_epsilon = 0.1;
+
 public:
 	TDNetworkStrategy(){
 		//m_inLayer.setStructure({BOARD_SIZE, BOARD_SIZE, 2}, {20, 3, 3});
+<<<<<<< HEAD
         m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
         m_hiddenLayer.setStructure(m_inLayer.outputShape(), 120 );
+=======
+        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, 200);
+        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 100 );
+>>>>>>> c33267d205e974a2ea73363e8c72260a6450e0ff
         m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
 
@@ -173,23 +178,18 @@ public:
     std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves, bool epsilon_greedy) {
         std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? 1 : 1) , -1 );
         double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
-        if (epsilon_greedy && u < EPSILON) {
+        if (epsilon_greedy && u < m_epsilon) {
             int ri = shark::random::uni(shark::random::globalRng(), 0, sum(feasible_moves)-1);
             int move_val_idx = 0;
             for (int i=0; i < feasible_moves.size(); i++) {
                 if (feasible_moves(i) == 1) {
                     if (ri == 0) {
-                        chosen_move.first = move_values[move_val_idx].first;
-                        chosen_move.second = move_values[move_val_idx].second;
+                        chosen_move = move_values[move_val_idx];
                         break;
                     }
                     ri--;
                     move_val_idx++;
                 }
-            }
-            if (chosen_move.first < 0 || chosen_move.first != chosen_move.first) {
-                std::cout << chosen_move.first << std::endl;
-                throw std::runtime_error("No epsilon greedy move found!");
             }
         } else {
             for(int i=0; i < move_values.size(); i++) {
@@ -199,15 +199,7 @@ public:
                     chosen_move = move_values[i];
                 }
             }
-            if (chosen_move.second == -1) {
-                for (int i=0; i < move_values.size(); i++) {
-                    std::cout << "(" << move_values[i].first << ", " << move_values[i].second << "), ";
-                }
-                std::cout << std::endl;
-                throw std::runtime_error("No most valuable move found");
-            }
         }
-        //std::cout << "chosen value: " << chosen_move.first << std::endl;
         if (chosen_move.second == -1) {
             throw std::runtime_error("Chosen move is -1");
         }
@@ -245,14 +237,6 @@ public:
                 fieldCopy(x,y).tileState = Empty;
             }
         }
-        if (move_values[0].first != move_values[0].first) {
-
-            for (int i=0; i < move_values.size(); i++) {
-                std::cout << "(" << move_values[i].first << ", " << move_values[i].second << "), ";
-            }
-            std::cout << std::endl;
-            throw std::runtime_error("Move value is nan!");
-        }
         return move_values;
     }
 
@@ -266,9 +250,6 @@ public:
         shark::blas::matrix<Tile> fieldCopy = getFieldCopy(f);
         std::vector<std::pair<double, int>> move_values = getMoveValues(fieldCopy, activePlayer, feasibleMoves);
         std::pair<double, int> chosen_move = chooseMove(move_values, activePlayer, feasibleMoves, epsilon_greedy);
-        if (chosen_move.first != chosen_move.first) {
-            throw std::runtime_error("Heey");
-        }
 
         if (activePlayer == Hex::Red) {
             chosen_move.second = flipToOriginalRotatedIndex(chosen_move.second);

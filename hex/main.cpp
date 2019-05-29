@@ -6,9 +6,6 @@
 using namespace shark;
 using namespace Hex;
 
-#define NUM_EPSIODES_CMA 100000
-#define NUM_EPSIODES_TD 1000000000
-
 /******************\
  *  Base Trainer  *
 \******************/
@@ -21,8 +18,10 @@ public:
     virtual void printTrainingStatus() = 0;
     virtual void step() = 0;
     virtual void saveModel(std::string modelName) = 0;
+    size_t NumberOfEpisodes() { return m_number_of_episodes; }
 protected:
     AlgorithmType m_algorithm;
+    size_t m_number_of_episodes;
     size_t m_steps = 0;
     float m_wins_vs_random = 0;
     float m_games_vs_random_played = 0;
@@ -56,7 +55,10 @@ protected:
  *  CMA  Trainer  *
 \******************/
 class ModelTrainerCMA : public ModelTrainer<CMAAlgorithm> {
+private:
     CMANetworkStrategy m_player2;
+protected:
+    size_t m_number_of_episodes = 1000000;
 public:
     ModelTrainerCMA() {
         m_player2.setColor(Red);
@@ -118,6 +120,8 @@ public:
 \******************/
 class ModelTrainerTD : public ModelTrainer<TDAlgorithm> {
 private:
+protected:
+    size_t m_number_of_episodes = 100000000;
 public:
     ModelTrainerTD() {}
 
@@ -127,6 +131,7 @@ public:
         game.reset();
         std::cout << game.asciiState() << std::endl;
         bool won = false;
+        unsigned state = 0;
         while (!won) {
             RealVector feasibleMoves;
             if (game.ActivePlayer() == Hex::Red) {
@@ -135,10 +140,11 @@ public:
                 feasibleMoves = game.getFeasibleMoves( game.getGameBoard() );
             }
             std::pair<double, int> chosen_move = TDplayer1.getChosenMove(feasibleMoves, game.getGameBoard(), game.ActivePlayer(), false);
+            std::cout << "Value of state " << state << ": " << chosen_move.first << std::endl;
             won = !game.takeTurn(chosen_move.second);
             std::cout << game.asciiState() << std::endl;
+            state++;
         }
-        std::cout << game.asciiState() << std::endl;
     }
     void playAgainstRandom() override {
         RandomStrategy random_player;
@@ -184,19 +190,22 @@ template<class TrainerType>
 void trainingLoop(std::string modelName) {
     TrainerType trainer;
 
-    for (int i=0; i < NUM_EPSIODES_CMA; i++) {
-        if (i % 10 == 0) {
+    for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
+
+
+
+        //if (i % 50 == 0) {
+        //    std::cout << std::endl << "Training status: " << std::endl;
+        //    trainer.printTrainingStatus();
+        //}
+        if (i % 200 == 0) {
+            trainer.playExampleGame();
+        }
+        if (i % 1000 == 0) {
             trainer.playAgainstRandom();
         }
-        if (i % 50 == 0) {
-            std::cout << std::endl << "Training status: " << std::endl;
-            trainer.printTrainingStatus();
-        }
-        if (i % 100 == 0) {
+        if (i % 200 == 0) {
             trainer.saveModel(modelName);
-        }
-        if (i % 10000 == 0) {
-            trainer.playExampleGame();
         }
         trainer.step();
     }
