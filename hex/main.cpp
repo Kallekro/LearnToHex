@@ -128,10 +128,8 @@ public:
         std::cout << game.asciiState() << std::endl;
         bool won = false;
         while (!won) {
-            // TODO: Flip board for player 2! (?)
             RealVector feasibleMoves;
             if (game.ActivePlayer() == Hex::Red) {
-                // player 2 gets feasible moves from the rotated board
                 feasibleMoves = game.getFeasibleMoves( TDplayer1.rotateField(game.getGameBoard() ) );
             } else {
                 feasibleMoves = game.getFeasibleMoves( game.getGameBoard() );

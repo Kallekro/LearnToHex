@@ -42,34 +42,36 @@ public:
     Game GetGame() { return m_game; }
     TDNetworkStrategy GetStrategy() { return m_strategy; }
 
+    // Take one step in the algorithm (run episode/game and calculate new weights)
     void EpisodeStep(unsigned episode) override {
         m_game.reset();
         bool won = false;
         m_strategy.setParameters(m_weights);
-        // for computing derivatives
+
+        // save states, values and rewards for computing derivatives
         std::vector<RealVector> states;
         RealVector rewards;
         RealVector values;
+        RealVector nextValues;
 
+        // game turns elapsed
         int step_i = 0;
 
-         // save state
-        RealVector input(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
-        unsigned activePlayer = m_game.ActivePlayer();
+        // variable for storing input to the neural network
+        RealVector input((Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
 
         while (!won) {
-            activePlayer = m_game.ActivePlayer();
+            unsigned playerWithTurn = m_game.ActivePlayer();
 
             RealVector feasibleMoves;// = m_game.getFeasibleMoves( m_game.getGameBoard());
-            if (m_game.ActivePlayer() == Hex::Red) {
+            if (playerWithTurn == Hex::Red) {
                 // player 2 gets feasible moves from the rotated board
                 feasibleMoves = m_game.getFeasibleMoves( m_strategy.rotateField( m_game.getGameBoard() ) );
             } else {
                 feasibleMoves = m_game.getFeasibleMoves( m_game.getGameBoard());
             }
 
-
-            std::pair<double, int> chosen_move = m_strategy.getChosenMove( feasibleMoves, m_game.getGameBoard(), m_game.ActivePlayer(), true);
+            std::pair<double, int> chosen_move = m_strategy.getChosenMove( feasibleMoves, m_game.getGameBoard(), playerWithTurn, true);
 
             //std::cout << "player: " << m_game.ActivePlayer() << std::endl;
             //std::cout << "move: " << chosen_move.first <<  ", " << chosen_move.second << std::endl;
@@ -82,9 +84,6 @@ public:
                     std::cout << std::endl;
                     exit(1);
                 } else {
-
-
-
                     won = !m_game.takeTurn(chosen_move.second);
 
                     if (!won) {
@@ -99,15 +98,18 @@ public:
                     //} else {
                     //    fieldCopy = m_game.getGameBoard();
                     //}
-                    m_strategy.createInput(m_game.getGameBoard(), m_game.ActivePlayer(), input);
+                    m_strategy.createInput(m_game.getGameBoard(), playerWithTurn, input);
                     states.push_back(input);
 
-                    if (m_game.ActivePlayer() == Hex::Red) {
+                    if (playerWithTurn == Hex::Red) {
                         values.push_back(1- chosen_move.first);
                     } else {
                         // TODO: maybe not evaluate again?
-                        double val = m_strategy.evaluateNetwork(input);
-                        values.push_back(1- val);
+                        //double val = m_strategy.evaluateNetwork(input);
+                        values.push_back(1- chosen_move.first);
+                    }
+                    if (step_i > 0) {
+                        nextValues.push_back(values[step_i-1]);
                     }
 
                     if (episode % 1000 == 0) {
@@ -121,11 +123,11 @@ public:
             step_i++;
         }
 
-        RealVector nextValues = subrange(values, 1, values.size()+1);
-        nextValues[nextValues.size()-1] = 1.0;
+        //RealVector nextValues = subrange(values, 1, values.size()+1);
+        nextValues.push_back(1.0);
 
 
-        RealVector statePoint(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
+        RealVector statePoint((Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);
         // batch of states
         Batch<RealVector>::type stateBatch = Batch<RealVector>::createBatch(statePoint, states.size());
@@ -135,7 +137,7 @@ public:
         //std::cout << "ASSERT " << (values.size() == states.size())  << std::endl;
         //std::cout << values.size() << ", " << states.size() << std::endl;
         for (int i=0; i < states.size(); i++) {
-            if (states[i].size() != 3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE)) {
+            if (states[i].size() != (Hex::BOARD_SIZE*Hex::BOARD_SIZE)) {
                 std::cout << "state " << i << std::endl;
             }
             getBatchElement(stateBatch, i) = states[i];
