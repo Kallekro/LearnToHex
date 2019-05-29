@@ -114,8 +114,8 @@ private:
 public:
 	TDNetworkStrategy(){
 		//m_inLayer.setStructure({BOARD_SIZE, BOARD_SIZE, 2}, {20, 3, 3});
-        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, 80);
-        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 40 );
+        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
+        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 120 );
         m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
 
