@@ -109,7 +109,7 @@ public:
                         values.push_back(1- chosen_move.first);
                     }
                     if (step_i > 0) {
-                        nextValues.push_back(values[step_i-1]);
+                        nextValues.push_back(values[step_i]);
                     }
 
                     if (episode % 1000 == 0) {
@@ -144,7 +144,7 @@ public:
             getBatchElement(valueBatch, i)(0) = values(i);
         }
 
-        //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
+        std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
         RealVector eTrace(step_i, 0.0);
 
