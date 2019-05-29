@@ -98,16 +98,9 @@ public:
                     //} else {
                     //    fieldCopy = m_game.getGameBoard();
                     //}
-                    m_strategy.createInput(m_game.getGameBoard(), playerWithTurn, input);
+                    m_strategy.createInput(m_game.getGameBoard(), m_game.ActivePlayer(), input);
                     states.push_back(input);
-
-                    if (playerWithTurn == Hex::Red) {
-                        values.push_back(1- chosen_move.first);
-                    } else {
-                        // TODO: maybe not evaluate again?
-                        //double val = m_strategy.evaluateNetwork(input);
-                        values.push_back(1- chosen_move.first);
-                    }
+                    values.push_back(1- chosen_move.first);
                     if (step_i > 0) {
                         nextValues.push_back(values[step_i]);
                     }
@@ -144,7 +137,7 @@ public:
             getBatchElement(valueBatch, i)(0) = values(i);
         }
 
-        std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
+        //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
         RealVector eTrace(step_i, 0.0);
 
