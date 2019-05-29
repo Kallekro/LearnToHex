@@ -6,8 +6,8 @@
 using namespace shark;
 using namespace Hex;
 
-#define NUM_EPSIODES_CMA 50000
-#define NUM_EPSIODES_TD 10000000
+#define NUM_EPSIODES_CMA 100000
+#define NUM_EPSIODES_TD 1000000000
 
 /******************\
  *  Base Trainer  *
@@ -185,17 +185,17 @@ void trainingLoop(std::string modelName) {
     TrainerType trainer;
 
     for (int i=0; i < NUM_EPSIODES_CMA; i++) {
-        //if (i % 10 == 0) {
-        //    trainer.playAgainstRandom();
-        //}
-        //if (i % 50 == 0) {
-        //    std::cout << std::endl << "Training status: " << std::endl;
-        //    trainer.printTrainingStatus();
-        //}
+        if (i % 10 == 0) {
+            trainer.playAgainstRandom();
+        }
+        if (i % 50 == 0) {
+            std::cout << std::endl << "Training status: " << std::endl;
+            trainer.printTrainingStatus();
+        }
         if (i % 100 == 0) {
             trainer.saveModel(modelName);
         }
-        if (i % 100 == 0) {
+        if (i % 10000 == 0) {
             trainer.playExampleGame();
         }
         trainer.step();
