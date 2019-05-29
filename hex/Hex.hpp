@@ -169,7 +169,7 @@ namespace Hex {
             IntVector feasible_moves((BOARD_SIZE*BOARD_SIZE), 1);
             for (int i=0; i<BOARD_SIZE; i++) {
                 for (int j=0; j<BOARD_SIZE; j++) {
-                    if (m_gameboard(i, j).tileState != Empty) {
+                    if (field(i, j).tileState != Empty) {
                         feasible_moves(BOARD_SIZE * i + j) = 0;
                     }
                 }
@@ -315,13 +315,13 @@ namespace Hex {
                     m_gameboard(i,j).reset();
                 }
             }
-            //m_activePlayer = 0;
+            m_activePlayer = 0;
             // random starting player
-            if (random::coinToss(random::globalRng())) {
-                m_activePlayer = 0;
-            } else {
-                m_activePlayer = 1;
-            }
+            //if (random::coinToss(random::globalRng())) {
+            //    m_activePlayer = 0;
+            //} else {
+            //    m_activePlayer = 1;
+            //}
             m_playerWon = -1;
             turns_taken = 0;
             m_log = std::vector<Log>();

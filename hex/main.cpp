@@ -129,7 +129,14 @@ public:
         bool won = false;
         while (!won) {
             // TODO: Flip board for player 2! (?)
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(game.getGameBoard()), game.getGameBoard(), game.ActivePlayer(), false);
+            RealVector feasibleMoves;
+            if (game.ActivePlayer() == Hex::Red) {
+                // player 2 gets feasible moves from the rotated board
+                feasibleMoves = game.getFeasibleMoves( TDplayer1.rotateField(game.getGameBoard() ) );
+            } else {
+                feasibleMoves = game.getFeasibleMoves( game.getGameBoard() );
+            }
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(feasibleMoves, game.getGameBoard(), game.ActivePlayer(), false);
             won = !game.takeTurn(chosen_move.second);
             std::cout << game.asciiState() << std::endl;
         }
@@ -180,17 +187,17 @@ void trainingLoop(std::string modelName) {
     TrainerType trainer;
 
     for (int i=0; i < NUM_EPSIODES_CMA; i++) {
-        if (i % 10 == 0) {
-            trainer.playAgainstRandom();
-        }
-        if (i % 50 == 0) {
-            std::cout << std::endl << "Training status: " << std::endl;
-            trainer.printTrainingStatus();
-        }
+        //if (i % 10 == 0) {
+        //    trainer.playAgainstRandom();
+        //}
+        //if (i % 50 == 0) {
+        //    std::cout << std::endl << "Training status: " << std::endl;
+        //    trainer.printTrainingStatus();
+        //}
         if (i % 100 == 0) {
             trainer.saveModel(modelName);
         }
-        if (i % 50 == 0) {
+        if (i % 100 == 0) {
             trainer.playExampleGame();
         }
         trainer.step();

@@ -59,11 +59,22 @@ public:
 
         while (!won) {
             activePlayer = m_game.ActivePlayer();
-            // encode the gameboard
-            m_strategy.createInput(m_game.getGameBoard(), activePlayer, input);
+
+            RealVector feasibleMoves;// = m_game.getFeasibleMoves( m_game.getGameBoard());
+            if (m_game.ActivePlayer() == Hex::Red) {
+                // player 2 gets feasible moves from the rotated board
+                feasibleMoves = m_game.getFeasibleMoves( m_strategy.rotateField( m_game.getGameBoard() ) );
+            } else {
+                feasibleMoves = m_game.getFeasibleMoves( m_game.getGameBoard());
+            }
 
 
-            std::pair<double, int> chosen_move = m_strategy.getChosenMove( m_game.getFeasibleMoves(m_game.getGameBoard()), m_game.getGameBoard(), activePlayer, true);
+            std::pair<double, int> chosen_move = m_strategy.getChosenMove( feasibleMoves, m_game.getGameBoard(), m_game.ActivePlayer(), true);
+
+            //std::cout << "player: " << m_game.ActivePlayer() << std::endl;
+            //std::cout << "move: " << chosen_move.first <<  ", " << chosen_move.second << std::endl;
+            //shark::blas::matrix<Hex::Tile> tmp = m_strategy.rotateField(m_game.getGameBoard());
+            //std::cout << "feasible moves: " << m_game.getFeasibleMoves(tmp) << std::endl ;
             // take action
             try {
                 if (chosen_move.second < 0 || chosen_move.second >= Hex::BOARD_SIZE*Hex::BOARD_SIZE) {
@@ -72,22 +83,31 @@ public:
                     exit(1);
                 } else {
 
-                    won = !m_game.takeTurn(chosen_move.second);
-                    // if player 1, save the afterstate and value
-                    if (activePlayer == Hex::Blue) {
-                        m_strategy.createInput(m_game.getGameBoard(), activePlayer, input);
-                        if (!won) {
-                            rewards.push_back(0.0);
-                        } else {
-                            rewards.push_back(1.0);
-                        }
-                        states.push_back(input);
-                        values.push_back(chosen_move.first);
-                    }
 
-                    if (!won) { // opponent take turn
-                        std::pair<double, int> opp_chosen_move = m_strategy.getChosenMove(m_game.getFeasibleMoves(m_game.getGameBoard()), m_game.getGameBoard(), m_game.ActivePlayer(), true);
-                        won = !m_game.takeTurn( opp_chosen_move.second );
+
+                    won = !m_game.takeTurn(chosen_move.second);
+
+                    if (!won) {
+                        rewards.push_back(0.0);
+                    } else {
+                        rewards.push_back(1.0);
+                    }
+                    // create input
+                    //shark::blas::matrix<Hex::Tile> fieldCopy;
+                    //if (m_game.ActivePlayer() == Hex::Red) {
+                    //    fieldCopy = m_strategy.rotateField( m_game.getGameBoard() );
+                    //} else {
+                    //    fieldCopy = m_game.getGameBoard();
+                    //}
+                    m_strategy.createInput(m_game.getGameBoard(), m_game.ActivePlayer(), input);
+                    states.push_back(input);
+
+                    if (m_game.ActivePlayer() == Hex::Red) {
+                        values.push_back(1- chosen_move.first);
+                    } else {
+                        // TODO: maybe not evaluate again?
+                        double val = m_strategy.evaluateNetwork(input);
+                        values.push_back(1- val);
                     }
 
                     if (episode % 1000 == 0) {
@@ -102,11 +122,8 @@ public:
         }
 
         RealVector nextValues = subrange(values, 1, values.size()+1);
-        //if (m_game.ActivePlayer() == Hex::Red) {
-        //    nextValues[nextValues.size()-1] = 1.0;
-        //} else {
-        //    nextValues[nextValues.size()-1] = 0.0;
-        //}
+        nextValues[nextValues.size()-1] = 1.0;
+
 
         RealVector statePoint(3*(Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);
@@ -125,7 +142,7 @@ public:
             getBatchElement(valueBatch, i)(0) = values(i);
         }
 
-        //std::cout << "R: " << rewards.size() << " V: " << values.size() << " NV: " << nextValues.size() << std::endl;
+        //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
         RealVector eTrace(step_i, 0.0);
 
@@ -135,7 +152,7 @@ public:
 
         // computes td-errors
         RealMatrix coeffs(states.size(), m_strategy.GetMoveModel().outputShape().numElements()); // b td_main.cpp:286
-        column(coeffs, 0) = rewards + nextValues - values;
+        column(coeffs, 0) = (rewards + nextValues - values); // * eTrace;
 
         boost::shared_ptr<State> state = m_strategy.createState();
         m_strategy.GetMoveModel().eval(stateBatch, valueBatch, *state);
