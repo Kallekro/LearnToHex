@@ -114,13 +114,8 @@ private:
 public:
 	TDNetworkStrategy(){
 		//m_inLayer.setStructure({BOARD_SIZE, BOARD_SIZE, 2}, {20, 3, 3});
-<<<<<<< HEAD
         m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
         m_hiddenLayer.setStructure(m_inLayer.outputShape(), 120 );
-=======
-        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, 200);
-        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 100 );
->>>>>>> c33267d205e974a2ea73363e8c72260a6450e0ff
         m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
 
@@ -151,6 +146,7 @@ public:
         return i % n * n + n - ceil(i/n) - 1;
     }
 
+    // reverse a vector
     blas::vector<Hex::Tile> reverseVector(blas::vector<Hex::Tile> vec) {
         blas::vector<Hex::Tile> vecOut(vec.size());
         for (int i=0; i < vec.size(); i++) {
@@ -159,6 +155,7 @@ public:
         return vecOut;
     }
 
+    // Rotates a gameboard -90 degrees
     shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field) {
         shark::blas::matrix<Hex::Tile> fieldCopy(Hex::BOARD_SIZE, Hex::BOARD_SIZE);
         for (int i=0; i < Hex::BOARD_SIZE; i++) {
@@ -174,7 +171,7 @@ public:
         return outputs[0];
     }
 
-
+    // Uses the network to evaluate the board for all feasible moves, and chooses an action with epsilon greediness.
     std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves, bool epsilon_greedy) {
         std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? 1 : 1) , -1 );
         double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
