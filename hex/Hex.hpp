@@ -9,7 +9,7 @@
 using namespace shark;
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 5;
+    static const unsigned BOARD_SIZE = 3;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -55,6 +55,7 @@ namespace Hex {
             m_tile_ref = nullptr;
         }
 
+        // get's the line segment that a tile is potentially referencing
         std::shared_ptr<LineSegment> GetLineSegment() {
             if (m_linesegment != nullptr) {
                 return m_linesegment;
@@ -65,6 +66,7 @@ namespace Hex {
             }
         }
 
+        // Set the linesegment on a tile
         void ReferLineSegment(Tile* newref) {
             if (m_linesegment != nullptr) {
                 m_linesegment = nullptr;
@@ -76,6 +78,7 @@ namespace Hex {
 
         bool OwnsLine() { return m_linesegment != nullptr; }
 
+        // Placces a tile on the gameboard. Is used by takeTurn.
         bool PlaceTile(TileState newState, Tile* neighbours[6], int edge_id) {
             tileState = newState;
             bool tile_connected_A = (edge_id == -1);
@@ -109,14 +112,7 @@ namespace Hex {
         }
     };
 
-    // log for importance sampling
-    struct Log {
-        unsigned activePlayer;
-        double logProb;
-        unsigned moveAction;
-        blas::matrix<Tile> moveState;
-    };
-
+    // The base-strategy for all strategies
     class Strategy {
     public:
         virtual RealVector getMoveAction(blas::matrix<Tile>const& field) = 0;
@@ -141,6 +137,7 @@ namespace Hex {
         }
     };
 
+    // A class for the Hex-simulator
     class Game {
 
 	    blas::matrix<Tile> m_gameboard;
@@ -162,9 +159,7 @@ namespace Hex {
         unsigned int m_next_rank;
 
 
-        Log m_lastStep;
-        std::vector<Log> m_log;
-
+        // returns a vector containing the feasible moves of the board.
         IntVector m_feasible_move_actions(blas::matrix<Tile> const& field) const {
             IntVector feasible_moves((BOARD_SIZE*BOARD_SIZE), 1);
             for (int i=0; i<BOARD_SIZE; i++) {
@@ -176,6 +171,7 @@ namespace Hex {
             }
             return feasible_moves;
         }
+        // Converts the feasible-moves to a vector of probabilities(used for sampling actions.)
         RealVector m_feasible_probabilies(RealVector probs, IntVector const& feasible_moves) const {
             for (std::size_t i=0; i != probs.size(); i++) {
                 if (!feasible_moves(i)) {
@@ -187,6 +183,7 @@ namespace Hex {
             return probs;
         }
 
+        // Randomly sample an action from the feasible moves.
         unsigned int m_sample_move_action(RealVector const& action_prob)const{
             double u = random::uni(random::globalRng(), 0.0, 1.0);
 		    double cumulant = 0.0;
@@ -199,6 +196,7 @@ namespace Hex {
             action_prob.size() - 1;
         }
 
+        // Takes a specific action.
         bool m_take_move_action(unsigned move_action) {
             unsigned x = move_action % BOARD_SIZE;
             unsigned y = move_action / BOARD_SIZE;
@@ -284,10 +282,6 @@ namespace Hex {
             m_initializeboard();
         }
 
-        std::vector<Log> getLog() {
-            return m_log;
-        }
-
 	    blas::matrix<Tile> getGameBoard() {
             return m_gameboard;
         }
@@ -316,7 +310,7 @@ namespace Hex {
                 }
             }
             m_activePlayer = 0;
-            // random starting player
+             //random starting player
             //if (random::coinToss(random::globalRng())) {
             //    m_activePlayer = 0;
             //} else {
@@ -324,11 +318,7 @@ namespace Hex {
             //}
             m_playerWon = -1;
             turns_taken = 0;
-            m_log = std::vector<Log>();
-            m_lastStep = Log();
         }
-
-
 
         void FlipBoard() {
             int ri = BOARD_SIZE-1;
@@ -362,10 +352,6 @@ namespace Hex {
         }
 
         bool takeTurn(double moveAction) {
-            //logging
-            m_lastStep.moveState = m_gameboard;
-            m_lastStep.activePlayer = m_activePlayer;
-
             turns_taken++;
 
             bool won;
@@ -381,25 +367,10 @@ namespace Hex {
             if (won) {
                 m_playerWon = m_activePlayer;
             }
-            m_lastStep.moveAction = moveAction;
-		    //m_lastStep.logProb = std::log(moveProbs(moveAction));
-            m_log.push_back(m_lastStep);
             m_next_player();
             return !won;
         }
 
-        //relative frequency of the last action as if played under a different pair of strategies
-        double logImportanceWeight(std::vector<Strategy*> const& strategies){
-	        auto strategy = strategies[m_lastStep.activePlayer];
-	        auto feasibleMoves = m_feasible_move_actions(m_lastStep.moveState);
-	        auto moveProbs =m_feasible_probabilies(strategy->getMoveAction(m_lastStep.moveState), feasibleMoves);
-            double logProb = 0.0;
-            if (moveProbs(m_lastStep.moveAction) != 0) {
-                logProb = std::log(moveProbs(m_lastStep.moveAction));
-            }
-	        return logProb - m_lastStep.logProb;
-
-        }
         int getRank(std::size_t player)const {
             return player == m_playerWon ? 1 : 0;
         }

@@ -120,9 +120,6 @@ public:
         Batch<RealVector>::type valueBatch = Batch<RealVector>::createBatch(valuePoint, states.size());
 
         for (int i=0; i < states.size(); i++) {
-            if (states[i].size() != (Hex::BOARD_SIZE*Hex::BOARD_SIZE)) {
-                std::cout << "state " << i << std::endl;
-            }
             getBatchElement(stateBatch, i) = states[i];
             getBatchElement(valueBatch, i)(0) = values(i);
         }
@@ -137,7 +134,7 @@ public:
 
         // computes td-errors
         RealMatrix coeffs(states.size(), m_strategy.GetMoveModel().outputShape().numElements()); // b td_main.cpp:286
-        column(coeffs, 0) = (rewards + nextValues - values); // * eTrace;
+        column(coeffs, 0) = (rewards + nextValues - values); //* eTrace;
 
         boost::shared_ptr<State> state = m_strategy.createState();
         m_strategy.GetMoveModel().eval(stateBatch, valueBatch, *state);
