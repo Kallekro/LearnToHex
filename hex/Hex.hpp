@@ -9,7 +9,7 @@
 using namespace shark;
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 7;
+    static const unsigned BOARD_SIZE = 5;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -120,6 +120,31 @@ namespace Hex {
         virtual void setParameters(RealVector const& parameters) = 0;
         virtual ConcatenatedModel<RealVector> GetMoveModel() = 0;
 
+        // reverses a vector (for use in rotateField)
+        blas::vector<Hex::Tile> reverseVector(blas::vector<Hex::Tile> vec) {
+            blas::vector<Hex::Tile> vecOut(vec.size());
+            for (int i=0; i < vec.size(); i++) {
+                vecOut(vec.size() - i - 1) = vec(i);
+            }
+            return vecOut;
+        }
+
+        // rotates field counter-clockwise
+        shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field) {
+            shark::blas::matrix<Hex::Tile> fieldCopy(Hex::BOARD_SIZE, Hex::BOARD_SIZE);
+            for (int i=0; i < Hex::BOARD_SIZE; i++) {
+                shark::blas::vector<Hex::Tile> tmp = reverseVector(row(field, i));
+                column(fieldCopy, i) = tmp;
+            }
+            return fieldCopy;
+        }
+
+        // takes a 1D index of a matrix and converts it to the corresponding 1D index of the same matrix, but rotated clockwise, undoing the counterclockwise rotation
+        int flipToOriginalRotatedIndex(int i) {
+            return i % Hex::BOARD_SIZE * Hex::BOARD_SIZE + Hex::BOARD_SIZE - ceil(i/Hex::BOARD_SIZE) - 1;
+        }
+
+
         void loadStrategy(std::string model_path) {
             std::ifstream ifs(model_path);
             boost::archive::polymorphic_text_iarchive ia(ifs);
@@ -135,6 +160,9 @@ namespace Hex {
             GetMoveModel().write(oa);
             ofs.close();
         }
+
+        // 0=base, 1=network-CMA, 2=network-TD , 3=human strategy, 4=random strategy
+        virtual int type () {return 0;}
     };
 
     // A class for the Hex-simulator
@@ -341,12 +369,23 @@ namespace Hex {
         bool takeStrategyTurn(std::vector<Strategy*> const& strategies) {
             // get player information
             auto strategy = strategies[m_activePlayer];
+
+            blas::matrix<Tile> fieldCopy;
+            RealVector feasibleMoves;
             // find all feasible moves
-            auto feasibleMoves = m_feasible_move_actions(m_gameboard);
+            if (m_activePlayer == Red && strategy->type() != 3) {
+                fieldCopy = strategy->rotateField(m_gameboard);
+                feasibleMoves = m_feasible_move_actions( fieldCopy );
+            } else {
+                fieldCopy = m_gameboard;
+                feasibleMoves = m_feasible_move_actions( m_gameboard );
+            }
             // get action preferences from player and transform into probabilities
-            RealVector moveProbs = m_feasible_probabilies(strategy->getMoveAction(m_gameboard), feasibleMoves);
+            RealVector moveProbs = m_feasible_probabilies(strategy->getMoveAction(fieldCopy) , feasibleMoves);
             // sample an action and take turn
-            double moveAction = m_sample_move_action(moveProbs);
+            double moveAction = (m_activePlayer == Red && strategy->type() != 3
+                                ? strategy->flipToOriginalRotatedIndex(m_sample_move_action(moveProbs))
+                                : m_sample_move_action(moveProbs) );
 
             return takeTurn(moveAction);
         }
