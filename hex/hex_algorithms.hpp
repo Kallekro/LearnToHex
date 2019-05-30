@@ -1,7 +1,7 @@
 #ifndef HEXMLALGORITHMS_H
 #define HEXMLALGORITHMS_H
 
-#include "SelfRLCMA2.h"
+#include "SelfRLCMA.h"
 #include "Hex.hpp"
 #include "hex_strategies.hpp"
 
@@ -64,17 +64,8 @@ public:
         while (!won) {
             unsigned playerWithTurn = m_game.ActivePlayer();
 
-            // get feasible moves
-            RealVector feasibleMoves;
-            if (playerWithTurn == Hex::Red) {
-                // player 2 gets feasible moves from the rotated board
-                feasibleMoves = m_game.getFeasibleMoves( m_strategy.rotateField( m_game.getGameBoard() ) );
-            } else {
-                feasibleMoves = m_game.getFeasibleMoves( m_game.getGameBoard());
-            }
-
             // choose an action
-            std::pair<double, int> chosen_move = m_strategy.getChosenMove( feasibleMoves, m_game.getGameBoard(), playerWithTurn, true);
+            std::pair<double, int> chosen_move = m_strategy.getChosenMove(m_game, true);
 
             // take action
             try {
@@ -190,17 +181,14 @@ public:
 
 		//simulate
 		game.reset();
-		double logW = 0.0;
         double max = BOARD_SIZE*BOARD_SIZE;
 		double count = 0;
         while(game.takeStrategyTurn({&strategy0, &strategy1})){
             count++;
-			logW += game.logImportanceWeight({&strategy0, &strategy1});
         }
 
 		double r = game.getRank(1);
-		double y = 2*r - 1;
-		double rr = 1/(1+std::exp(y*logW));
+
         return r;
 	}
 };

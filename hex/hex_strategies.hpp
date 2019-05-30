@@ -154,14 +154,15 @@ public:
     }
 
     // choose an action given a board and feasible moves
-    std::pair<double, int> getChosenMove(RealVector feasibleMoves, shark::blas::matrix<Tile> field, unsigned activePlayer, bool epsilon_greedy) {
-        shark::blas::matrix<Hex::Tile> f;
+    std::pair<double, int> getChosenMove(Game game, bool epsilon_greedy) {
+        shark::blas::matrix<Tile> fieldCopy;
+        unsigned activePlayer = game.ActivePlayer();
         if (activePlayer == Hex::Red) {
-            f = rotateField(field); // if player 2, rotate view
+            fieldCopy = rotateField(game.getGameBoard()); // if player 2, rotate view
         } else {
-            f = field;
+            fieldCopy = getFieldCopy(game.getGameBoard());
         }
-        shark::blas::matrix<Tile> fieldCopy = getFieldCopy(f);
+        RealVector feasibleMoves = game.getFeasibleMoves(fieldCopy);
         std::vector<std::pair<double, int>> move_values = getMoveValues(fieldCopy, activePlayer, feasibleMoves);
         std::pair<double, int> chosen_move = chooseMove(move_values, activePlayer, feasibleMoves, epsilon_greedy);
 

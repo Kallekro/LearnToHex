@@ -139,7 +139,7 @@ public:
             } else {
                 feasibleMoves = game.getFeasibleMoves( game.getGameBoard() );
             }
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(feasibleMoves, game.getGameBoard(), game.ActivePlayer(), false);
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, false);
             std::cout << "Value of state " << state << ": " << chosen_move.first << std::endl;
             won = !game.takeTurn(chosen_move.second);
             std::cout << game.asciiState() << std::endl;
@@ -155,7 +155,7 @@ public:
         bool won = false;
         while (!won) {
             if (game.ActivePlayer() == Blue) {
-                std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(game.getGameBoard()), game.getGameBoard(), Blue, false);
+                std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, false);
                 won = !game.takeTurn(chosen_move.second);
             } else {
                 won = !game.takeStrategyTurn({NULL, &random_player});
@@ -164,6 +164,29 @@ public:
         std::cout << game.asciiState() << std::endl;
         std::cout << "end of random game" << std::endl;
         updateRandomPlayStatus(game.getRank(Blue));
+    }
+    void playAgainstModel(std::string model1, std::string model2) {
+        // initialize players with models
+        TDNetworkStrategy TDplayer1;
+        TDplayer1.loadStrategy(model1);
+        TDNetworkStrategy TDplayer2;
+        TDplayer2.loadStrategy(model2);
+        Game game;
+        game.reset();
+
+        std::cout << game.asciiStatePython() << std::endl;
+        bool won = false;
+        while (!won) {
+            std::pair<double, int> chosen_move;
+            if (game.ActivePlayer() == Blue) {
+                chosen_move = TDplayer1.getChosenMove(game, false);
+            } else {
+                chosen_move = TDplayer2.getChosenMove(game, false);
+            }
+            won = !game.takeTurn(chosen_move.second);
+            std::cout << game.asciiStatePython() << std::endl;
+        }
+        std::cout << game.asciiStatePython() << std::endl;
     }
 
     void printTrainingStatus() override {
@@ -233,7 +256,7 @@ void playHexTDVsHuman(std::string model) {
     bool won = false;
     while (!won) {
         if (game.ActivePlayer() == Blue) {
-            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game.getFeasibleMoves(game.getGameBoard()), game.getGameBoard(), Blue, false);
+            std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, false);
             won = !game.takeTurn(chosen_move.second);
         } else {
             won = !game.takeStrategyTurn({NULL, &human_player});
