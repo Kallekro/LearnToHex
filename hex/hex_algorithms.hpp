@@ -1,7 +1,7 @@
 #ifndef HEXMLALGORITHMS_H
 #define HEXMLALGORITHMS_H
 
-#include "SelfRLCMA2.h"
+#include "SelfRLCMA.h"
 #include "Hex.hpp"
 #include "hex_strategies.hpp"
 
@@ -60,20 +60,14 @@ public:
         // variable for storing input to the neural network
         RealVector input((Hex::BOARD_SIZE*Hex::BOARD_SIZE), 0.0);
 
+        // Play game and record states, values and rewards
         while (!won) {
             unsigned playerWithTurn = m_game.ActivePlayer();
 
-            RealVector feasibleMoves;
-            if (playerWithTurn == Hex::Red) {
-                // player 2 gets feasible moves from the rotated board
-                feasibleMoves = m_game.getFeasibleMoves( m_strategy.rotateField( m_game.getGameBoard() ) );
-            } else {
-                feasibleMoves = m_game.getFeasibleMoves( m_game.getGameBoard());
-            }
+            // choose an action
+            std::pair<double, int> chosen_move = m_strategy.getChosenMove(m_game, true);
 
-            // get the epsilon greedy next move and it's associated value
-            std::pair<double, int> chosen_move = m_strategy.getChosenMove( feasibleMoves, m_game.getGameBoard(), playerWithTurn, true);
-
+            // take action
             try {
                 if (chosen_move.second < 0 || chosen_move.second >= Hex::BOARD_SIZE*Hex::BOARD_SIZE) {
                     std::cout << "Chosen move for player 1 " << chosen_move.second << " out of range." << std::endl;
@@ -82,24 +76,21 @@ public:
                 } else {
                     won = !m_game.takeTurn(chosen_move.second);
 
+                    // push 1 as reward if game is over, else 0
                     if (!won) {
                         rewards.push_back(0.0);
                     } else {
                         rewards.push_back(1.0);
                     }
-
+                    // create input
                     m_strategy.createInput(m_game.getGameBoard(), playerWithTurn, input);
-                    // save the state
+                    // push state, encoded like the state used in the neural network
                     states.push_back(input);
-                    // save value of state
+                    // push 1 - value (we want to minimize the chance of winning)
                     values.push_back(1- chosen_move.first);
-
+                    // push previous value as states' next value
                     if (step_i > 0) {
                         nextValues.push_back(values[step_i]);
-                    }
-
-                    if (episode % 10 == 0) {
-                        std::cout << m_game.asciiState() << std::endl;
                     }
                 }
             } catch (std::invalid_argument& e) {
@@ -108,16 +99,16 @@ public:
             }
             step_i++;
         }
+        // push last "next" value (for t+1)
+        nextValues.push_back(0.0);
 
-        nextValues.push_back(1.0);
-
+        // Now we calculate the derivative of the model after evaluating the batched states
         RealVector statePoint((Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);
         // batch of states
         Batch<RealVector>::type stateBatch = Batch<RealVector>::createBatch(statePoint, states.size());
         // batch of values/outputs/predictions
         Batch<RealVector>::type valueBatch = Batch<RealVector>::createBatch(valuePoint, states.size());
-
 
         for (int i=0; i < states.size(); i++) {
             getBatchElement(stateBatch, i) = states[i];
@@ -126,6 +117,7 @@ public:
 
         //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
+        // eligibility trace (not used right now)
         RealVector eTrace(step_i, 0.0);
         for (int k=1 ; k < step_i; k++) {
             eTrace(k) = pow(m_lambda, step_i - k);
@@ -141,6 +133,7 @@ public:
         RealVector derivative;
         m_strategy.GetMoveModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs, *state, derivative); // b td_main.cpp:271
 
+        // update weights
         m_weights -= m_learning_rate*derivative;
     }
 };
