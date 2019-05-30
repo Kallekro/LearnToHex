@@ -167,9 +167,7 @@ public:
     }
 
     void printTrainingStatus() override {
-        //std::cout<<"Training games: " << m_steps << "\nSigma: " << m_algorithm->GetCMA().sigma() << std::endl;
-        //std::cout<<"Value " << m_algorithm->GetCMA().solution().value << std::endl;
-        //std::cout<< "Learn: " << m_algorithm->GetCMA().rate() << std::endl;
+        std::cout << "Step " << m_steps << std::endl;
     }
 
     void step() override {
