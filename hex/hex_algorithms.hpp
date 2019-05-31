@@ -195,7 +195,6 @@ public:
         }
 
 		double r = game.getRank(1);
-
         return r;
 	}
 };

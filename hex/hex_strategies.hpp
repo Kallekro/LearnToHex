@@ -13,7 +13,6 @@ namespace Hex {
 
 /* Neural network strategies */
 
-
 /***********************\
  * TD Network Strategy *
 \***********************/
@@ -31,8 +30,9 @@ private:
 
 public:
 	TDNetworkStrategy(){
-        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, 80);
-        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 40);
+		//m_inLayer.setStructure({BOARD_SIZE, BOARD_SIZE, 2}, {20, 3, 3});
+        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
+        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 120 );
         m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
     }
@@ -209,6 +209,10 @@ public:
     }
 
     RealVector getMoveAction(blas::matrix<Tile>const& field) override {}
+
+    int type () override {
+        return 2;
+    }
 };
 
 /************************\
@@ -216,8 +220,8 @@ public:
 \************************/
 class CMANetworkStrategy: public Hex::Strategy{
 private:
-	Conv2DModel<RealVector, TanhNeuron> m_inLayer;
-	LinearModel<RealVector, TanhNeuron> m_hiddenLayer1;
+	LinearModel<RealVector> m_inLayer;
+	LinearModel<RealVector> m_hiddenLayer1;
 	LinearModel<RealVector> m_moveOut;
 
 	ConcatenatedModel<RealVector> m_moveNet ;
@@ -226,8 +230,8 @@ private:
 
 public:
 	CMANetworkStrategy(){
-		m_inLayer.setStructure({Hex::BOARD_SIZE,Hex::BOARD_SIZE, 2}, {20, 3,1});
-		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), {18,Hex::BOARD_SIZE,Hex::BOARD_SIZE});
+		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, Hex::BOARD_SIZE * Hex::BOARD_SIZE );
+		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 120 );
 //        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
 		m_moveOut.setStructure(m_inLayer.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
         m_moveNet = m_inLayer >> m_moveOut;
@@ -246,24 +250,27 @@ public:
 
 	shark::RealVector getMoveAction(shark::blas::matrix<Hex::Tile>const& field) override{
 		//find player position and prepare network position
-		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE*2),0.0);
+		RealVector inputs((Hex::BOARD_SIZE*Hex::BOARD_SIZE),0.0);
 		for(int i = 0; i < Hex::BOARD_SIZE; i++){
 			for(int j = 0; j < Hex::BOARD_SIZE; j++){
 				if(field(i,j).tileState == m_color){ // Channel where players own tiles are 1
-
-                    if (m_color == Hex::Red ) {
-					    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
-                    } else{
-					    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
-                    }
+                    inputs((j*Hex::BOARD_SIZE+i)) = 1.0;
+                } else if (field(i,j).tileState != Hex::Empty) {
+                    inputs((j*Hex::BOARD_SIZE+i)) = -1.0;
                 }
-				else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
-                    if (m_color == Hex::Red) {
-                        inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
-                    } else {
-                        inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
-                    }
-				}
+                //    if (m_color == Hex::Red ) {
+				//	    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
+                //    } else{
+				//	    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
+                //    }
+                //}
+				//else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
+                //    if (m_color == Hex::Red) {
+                //        inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
+                //    } else {
+                //        inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
+                //    }
+				//}
 
 				//if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					//inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
@@ -271,8 +278,8 @@ public:
                 //if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
 					//inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
 				//}
-			}
-		}
+		    }
+        }
 
 		//Get raw response for everything
 		RealVector response = m_moveNet(inputs);
@@ -300,6 +307,9 @@ public:
         return m_moveNet;
     };
 
+    int type () override {
+        return 1;
+    }
 };
 
 // Strategies for testing
@@ -317,6 +327,9 @@ public:
     void setParameters(shark::RealVector const&) override{}
     ConcatenatedModel<RealVector> GetMoveModel() override{};
 
+    int type () override {
+        return 4;
+    }
 };
 
 /******************\
@@ -384,6 +397,10 @@ public:
     std::size_t numParameters() const override{ return 1; }
     void setParameters(shark::RealVector const&) override{}
     ConcatenatedModel<RealVector> GetMoveModel() override{};
+
+    int type () override {
+        return 3;
+    }
 };
 
 
