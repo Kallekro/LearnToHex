@@ -1,10 +1,19 @@
 #include <boost/algorithm/string.hpp>
 #include "Hex.hpp"
-
 #include "hex_algorithms.hpp"
 
 using namespace shark;
 using namespace Hex;
+
+struct RandomGameStats {
+    double wins_vs_random = 0;
+    double games_vs_random_played = 0;
+    std::deque<double> last_wins;
+};
+
+struct PreviousModelStats {
+
+};
 
 /******************\
  *  Base Trainer  *
@@ -15,38 +24,41 @@ public:
     ModelTrainer() {}
     virtual void playExampleGame() = 0;
     virtual void playAgainstRandom() = 0;
+    virtual void playAgainstModel(std::string model) = 0;
     virtual void printTrainingStatus() = 0;
     virtual void step() = 0;
     virtual void saveModel(std::string modelName) = 0;
     size_t NumberOfEpisodes() { return m_number_of_episodes; }
+    AlgorithmType GetAlgorithm() { return m_algorithm; }
+
+    std::string lastModel;
 protected:
     AlgorithmType m_algorithm;
     size_t m_number_of_episodes;
     size_t m_steps = 0;
-    float m_wins_vs_random = 0;
-    float m_games_vs_random_played = 0;
-    std::deque<float> m_last_wins;
-    std::size_t m_games_played;
 
-    void updateRandomPlayStatus(bool blue_won) {
-        m_games_vs_random_played++;
+    struct RandomGameStats m_randomGameStats;
+    //struct
+
+    void updateRandomPlayStats(bool blue_won) {
+        m_randomGameStats.games_vs_random_played++;
         if (blue_won) {
             std::cout << "Network strategy (blue) won!" << std::endl;
-            m_wins_vs_random++;
-            m_last_wins.push_back(1);
+            m_randomGameStats.wins_vs_random++;
+            m_randomGameStats.last_wins.push_back(1);
         } else {
             std::cout << "Random strategy (red) won!" << std::endl;
-            m_last_wins.push_back(0);
+            m_randomGameStats.last_wins.push_back(0);
         }
-        std::cout << "blue winrate: " << m_wins_vs_random / m_games_vs_random_played << std::endl;
-        if (m_last_wins.size() > 100) {
-            m_last_wins.pop_front();
+        std::cout << "blue winrate: " << m_randomGameStats.wins_vs_random / m_randomGameStats.games_vs_random_played << std::endl;
+        if (m_randomGameStats.last_wins.size() > 100) {
+            m_randomGameStats.last_wins.pop_front();
         }
-        float sum = 0;
-        for (int i=0; i < m_last_wins.size(); i++) {
-            sum += m_last_wins[i];
+        double sum = 0;
+        for (int i=0; i < m_randomGameStats.last_wins.size(); i++) {
+            sum += m_randomGameStats.last_wins[i];
         }
-        std::cout << "blue winrate last " << m_last_wins.size() << " games: " << sum / m_last_wins.size() << std::endl;
+        std::cout << "blue winrate last " << m_randomGameStats.last_wins.size() << " games: " << sum / m_randomGameStats.last_wins.size() << std::endl;
     }
 };
 
@@ -57,10 +69,9 @@ protected:
 class ModelTrainerCMA : public ModelTrainer<CMAAlgorithm> {
 private:
     CMANetworkStrategy m_player2;
-protected:
-    size_t m_number_of_episodes = 1000000;
 public:
     ModelTrainerCMA() {
+        m_number_of_episodes = 1000000;
         m_player2.setColor(Red);
     }
 
@@ -94,8 +105,10 @@ public:
 
         std::cout << game.asciiState() << std::endl;
         std::cout << "end of random game" << std::endl;
-        updateRandomPlayStatus(game.getRank(Blue));
+        updateRandomPlayStats(game.getRank(Blue));
     }
+
+    void playAgainstModel(std::string model) override {}
 
     void printTrainingStatus() override {
         std::cout<<"Training games: " << m_steps << "\nSigma: " << m_algorithm.GetCMA().sigma() << std::endl;
@@ -119,11 +132,10 @@ public:
  *  TD   Trainer  *
 \******************/
 class ModelTrainerTD : public ModelTrainer<TDAlgorithm> {
-private:
-protected:
-    size_t m_number_of_episodes = 100000000;
 public:
-    ModelTrainerTD() {}
+    ModelTrainerTD() {
+        m_number_of_episodes = 100000000;
+    }
 
     void playExampleGame() override {
         Game game = m_algorithm.GetGame();
@@ -133,18 +145,12 @@ public:
         bool won = false;
         unsigned state = 0;
         while (!won) {
-            RealVector feasibleMoves;
-            if (game.ActivePlayer() == Hex::Red) {
-                feasibleMoves = game.getFeasibleMoves( TDplayer1.rotateField(game.getGameBoard() ) );
-            } else {
-                feasibleMoves = game.getFeasibleMoves( game.getGameBoard() );
-            }
             std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, false);
-            std::cout << "Value of state " << state << ": " << chosen_move.first << std::endl;
             won = !game.takeTurn(chosen_move.second);
             std::cout << game.asciiState() << std::endl;
             state++;
         }
+        std::cout << "End of example game." << std::endl;
     }
     void playAgainstRandom() override {
         RandomStrategy random_player;
@@ -162,31 +168,34 @@ public:
             }
         }
         std::cout << game.asciiState() << std::endl;
-        std::cout << "end of random game" << std::endl;
-        updateRandomPlayStatus(game.getRank(Blue));
+        std::cout << "End of model vs random game." << std::endl;
+        updateRandomPlayStats(game.getRank(Blue));
     }
-    void playAgainstModel(std::string model1, std::string model2) {
+
+    void playAgainstModel(std::string model) override {
         // initialize players with models
-        TDNetworkStrategy TDplayer1;
-        TDplayer1.loadStrategy(model1);
+        TDNetworkStrategy TDplayer1 = m_algorithm.GetStrategy();
         TDNetworkStrategy TDplayer2;
-        TDplayer2.loadStrategy(model2);
+        TDplayer2.loadStrategy(model);
         Game game;
         game.reset();
 
-        std::cout << game.asciiStatePython() << std::endl;
-        bool won = false;
-        while (!won) {
-            std::pair<double, int> chosen_move;
-            if (game.ActivePlayer() == Blue) {
-                chosen_move = TDplayer1.getChosenMove(game, false);
-            } else {
-                chosen_move = TDplayer2.getChosenMove(game, false);
+        double total_games = 1000;
+        double new_model_wins = 0;
+        for (int i=0; i < total_games; i++) {
+            bool won = false;
+            while (!won) {
+                std::pair<double, int> chosen_move;
+                if (game.ActivePlayer() == Blue) {
+                    chosen_move = TDplayer1.getChosenMove(game, false);
+                } else {
+                    chosen_move = TDplayer2.getChosenMove(game, false);
+                }
+                won = !game.takeTurn(chosen_move.second);
             }
-            won = !game.takeTurn(chosen_move.second);
-            std::cout << game.asciiStatePython() << std::endl;
         }
-        std::cout << game.asciiStatePython() << std::endl;
+        double winrate = total_games / new_model_wins;
+        std::cout << winrate << " winrate in " << total_games << " games played against previous model.";
     }
 
     void printTrainingStatus() override {
@@ -210,23 +219,26 @@ public:
 template<class TrainerType>
 void trainingLoop(std::string modelName) {
     TrainerType trainer;
-
     for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
-
-
-
-        //if (i % 50 == 0) {
-        //    std::cout << std::endl << "Training status: " << std::endl;
-        //    trainer.printTrainingStatus();
-        //}
-        if (i % 200 == 0) {
+        if (i % 1000 == 0) { // Play example game and save model
             trainer.playExampleGame();
+            trainer.saveModel(modelName);
         }
-        if (i % 1000 == 0) {
+        if (i % 1500 == 0) { // Play against a random strategy and display stats
             trainer.playAgainstRandom();
         }
-        if (i % 200 == 0) {
-            trainer.saveModel(modelName);
+        //if (i % 1000 == 0) { // Play against the previous model
+        //    if (i != 0) {
+        //        trainer.playAgainstModel(trainer.lastModel);
+        //    }
+        //    std::string modelName = "TDModel_autosave";
+        //    trainer.saveModel(modelName);
+        //    trainer.lastModel = modelName + ".model";
+        //}
+        if (i % 100 == 0) {
+            //std::cout << std::endl << "Training status: " << std::endl;
+            trainer.printTrainingStatus();
+
         }
         trainer.step();
     }
@@ -325,8 +337,10 @@ int main (int argc, char* argv[]) {
     }
 
     if (train_td) {
+        std::cout << "Training model with TD algorithm." << std::endl;
         trainingLoop<ModelTrainerTD>("TDmodel");
     } else {
+        std::cout << "Training model with CMA algorithm." << std::endl;
         trainingLoop<ModelTrainerCMA>("CMAmodel");
     }
 

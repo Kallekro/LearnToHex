@@ -73,11 +73,15 @@ public:
     }
 
     // rotates field counter-clockwise
-    shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field) {
+    shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field, bool clockwise) {
         shark::blas::matrix<Hex::Tile> fieldCopy(Hex::BOARD_SIZE, Hex::BOARD_SIZE);
         for (int i=0; i < Hex::BOARD_SIZE; i++) {
-            shark::blas::vector<Hex::Tile> tmp = reverseVector(row(field, i));
-            column(fieldCopy, i) = tmp;
+            if (clockwise) {
+                row(fieldCopy, i) = reverseVector(column(field, i));
+            } else {
+                column(fieldCopy, i) = reverseVector(row(field, i));
+            }
+
         }
         return fieldCopy;
     }
@@ -89,7 +93,7 @@ public:
 
     // choose a move given possible move_values
     std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves, bool epsilon_greedy) {
-        std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? 1 : 1) , -1 );
+        std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? -1 : -1) , -1 );
         double u = shark::random::uni(shark::random::globalRng(), 0.0, 1.0);
         if (epsilon_greedy && u < m_epsilon) {
             // if epsilon greedy we pick a random empty tile
@@ -108,7 +112,7 @@ public:
         } else {
             // if not epsilon greedy, we pick the move with the lowest associated value
             for(int i=0; i < move_values.size(); i++) {
-                if (move_values[i].first <= chosen_move.first ) {
+                if (move_values[i].first >= chosen_move.first ) {
                     chosen_move = move_values[i];
                 }
             }
@@ -116,6 +120,7 @@ public:
         if (chosen_move.second == -1) {
             throw std::runtime_error("Chosen move is -1");
         }
+        chosen_move.first = 1 - chosen_move.first;
         return chosen_move;
     }
 
@@ -143,7 +148,8 @@ public:
                 int x = i % BOARD_SIZE;
                 int y = i / BOARD_SIZE;
                 fieldCopy(x,y).tileState = (TileState)activePlayer;
-                createInput(fieldCopy, activePlayer, input);
+                fieldCopy = rotateField(fieldCopy, activePlayer == Red);
+                createInput(fieldCopy, activePlayer == Blue ? Red : Blue, input);
                 double value = this->evaluateNetwork(input);
                 std::pair<double, int> valPair = std::pair<double, int>(value, i);
                 move_values.push_back(valPair);
@@ -158,7 +164,7 @@ public:
         shark::blas::matrix<Tile> fieldCopy;
         unsigned activePlayer = game.ActivePlayer();
         if (activePlayer == Hex::Red) {
-            fieldCopy = rotateField(game.getGameBoard()); // if player 2, rotate view
+            fieldCopy = rotateField(game.getGameBoard(), false); // if player 2, rotate view counter-clockwise
         } else {
             fieldCopy = getFieldCopy(game.getGameBoard());
         }

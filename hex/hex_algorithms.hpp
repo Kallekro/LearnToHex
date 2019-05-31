@@ -74,6 +74,19 @@ public:
                     std::cout << std::endl;
                     exit(1);
                 } else {
+                    // create input
+                    blas::matrix<Tile> fieldCopy;
+                    if (playerWithTurn == Red) {
+                        fieldCopy = m_strategy.rotateField(m_game.getGameBoard(), false);
+                    } else {
+                        fieldCopy = m_game.getGameBoard();
+                    }
+                    m_strategy.createInput(fieldCopy, playerWithTurn, input);
+                    // push state, encoded like the state used in the neural network
+                    states.push_back(input);
+                    // push value
+                    values.push_back(chosen_move.first);
+
                     won = !m_game.takeTurn(chosen_move.second);
 
                     // push 1 as reward if game is over, else 0
@@ -82,15 +95,9 @@ public:
                     } else {
                         rewards.push_back(1.0);
                     }
-                    // create input
-                    m_strategy.createInput(m_game.getGameBoard(), playerWithTurn, input);
-                    // push state, encoded like the state used in the neural network
-                    states.push_back(input);
-                    // push 1 - value (we want to minimize the chance of winning)
-                    values.push_back(1- chosen_move.first);
                     // push previous value as states' next value
                     if (step_i > 0) {
-                        nextValues.push_back(values[step_i]);
+                        nextValues.push_back(1 - values[step_i]);
                     }
                 }
             } catch (std::invalid_argument& e) {
@@ -100,7 +107,7 @@ public:
             step_i++;
         }
         // push last "next" value (for t+1)
-        nextValues.push_back(0.0);
+        nextValues.push_back(1.0);
 
         // Now we calculate the derivative of the model after evaluating the batched states
         RealVector statePoint((Hex::BOARD_SIZE*Hex::BOARD_SIZE));
@@ -112,10 +119,10 @@ public:
 
         for (int i=0; i < states.size(); i++) {
             getBatchElement(stateBatch, i) = states[i];
-            getBatchElement(valueBatch, i)(0) = values(i);
+            getBatchElement(valueBatch, i)(0) = nextValues(i);
         }
 
-        //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
+        std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
         // eligibility trace (not used right now)
         RealVector eTrace(step_i, 0.0);
@@ -124,14 +131,14 @@ public:
         }
 
         // computes td-errors
-        RealMatrix coeffs(states.size(), m_strategy.GetMoveModel().outputShape().numElements()); // b td_main.cpp:286
+        RealMatrix coeffs(states.size(), m_strategy.GetMoveModel().outputShape().numElements());
         column(coeffs, 0) = (rewards + nextValues - values); //* eTrace;
 
         boost::shared_ptr<State> state = m_strategy.createState();
         m_strategy.GetMoveModel().eval(stateBatch, valueBatch, *state);
 
         RealVector derivative;
-        m_strategy.GetMoveModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs, *state, derivative); // b td_main.cpp:271
+        m_strategy.GetMoveModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs, *state, derivative);
 
         // update weights
         m_weights -= m_learning_rate*derivative;
