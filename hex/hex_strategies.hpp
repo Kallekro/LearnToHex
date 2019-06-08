@@ -230,11 +230,11 @@ private:
 
 public:
 	CMANetworkStrategy(){
-		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, Hex::BOARD_SIZE * Hex::BOARD_SIZE );
-		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 120 );
+		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, 10 );
+		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 40 );
 //        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
-		m_moveOut.setStructure(m_inLayer.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
-        m_moveNet = m_inLayer >> m_moveOut;
+		m_moveOut.setStructure(m_hiddenLayer1.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
+        m_moveNet = m_inLayer >> m_hiddenLayer1 >> m_moveOut;
 	}
 
     void save(OutArchive & archive) {
