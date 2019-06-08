@@ -35,6 +35,7 @@ public:
     size_t NumberOfEpisodes() { return m_number_of_episodes; }
     AlgorithmType GetAlgorithm() { return m_algorithm; }
 
+    struct RandomGameStats GetRandomPlayStats() { return m_randomGameStats; }
     void displayRandomPlayStats() {
         std::cout << "Displaying stats from random games:" << std::endl;
         std::cout << "Blue winrate: " << m_randomGameStats.blue_winrate << std::endl;
@@ -50,13 +51,13 @@ protected:
     struct RandomGameStats m_randomGameStats;
     //struct
 
-    void updateRandomPlayStats(bool blue_won) {
+    void updateRandomPlayStats(bool blue_lost) {
         m_randomGameStats.games_vs_random_played++;
-        if (blue_won) {
+        if (blue_lost) {
+            m_randomGameStats.last_wins.push_back(0);
+        } else {
             m_randomGameStats.wins_vs_random++;
             m_randomGameStats.last_wins.push_back(1);
-        } else {
-            m_randomGameStats.last_wins.push_back(0);
         }
         if (m_randomGameStats.last_wins.size() > 100) {
             m_randomGameStats.last_wins.pop_front();
@@ -118,7 +119,6 @@ public:
 
     void printTrainingStatus() override {
         std::cout<<"Training games: " << m_steps << "\nSigma: " << m_algorithm.GetCSA().sigma() << std::endl;
-        std::cout<<"Value " << m_algorithm.GetCSA().solution().value << std::endl;
         std::cout<< "Learn: " << m_algorithm.GetCSA().rate() << std::endl;
     }
 
@@ -233,6 +233,7 @@ public:
 template<class TrainerType>
 void trainingLoop(std::string modelName) {
     TrainerType trainer;
+    double highest_winrate = 0;
     for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
         if (i % 1000 == 0) { // Play example game and save model
             trainer.playExampleGame();
@@ -243,6 +244,12 @@ void trainingLoop(std::string modelName) {
                 trainer.playAgainstRandom();
             }
             trainer.displayRandomPlayStats();
+
+            double cur_model_winrate = trainer.GetRandomPlayStats().blue_winrate_last_x_games;
+            if (cur_model_winrate > highest_winrate) {
+                highest_winrate = cur_model_winrate;
+                trainer.saveModel("highestWR");
+            }
         }
         //if (i % 1000 == 0) { // Play against the previous model
         //    if (i != 0) {

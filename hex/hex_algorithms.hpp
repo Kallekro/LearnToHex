@@ -190,7 +190,7 @@ public:
 		game.reset();
         while(game.takeStrategyTurn({&strategy0, &strategy1})){ }
         // return reward of player 1
-        return game.getRank(1);
+        return game.getRank(0);
 	}
 };
 
