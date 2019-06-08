@@ -215,10 +215,10 @@ public:
     }
 };
 
-/************************\
- * CMA Network Strategy *
-\************************/
-class CMANetworkStrategy: public Hex::Strategy{
+/***************************\
+ * CSA-ES Network Strategy *
+\***************************/
+class CSANetworkStrategy: public Hex::Strategy{
 private:
 	LinearModel<RealVector> m_inLayer;
 	LinearModel<RealVector> m_hiddenLayer1;
@@ -229,7 +229,7 @@ private:
     unsigned m_color;
 
 public:
-	CMANetworkStrategy(){
+	CSANetworkStrategy(){
 		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, Hex::BOARD_SIZE * Hex::BOARD_SIZE );
 		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 120 );
 //        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});

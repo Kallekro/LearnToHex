@@ -122,7 +122,7 @@ public:
             getBatchElement(valueBatch, i)(0) = nextValues(i);
         }
 
-        std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
+        //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
         // eligibility trace (not used right now)
         RealVector eTrace(step_i, 0.0);
@@ -199,29 +199,29 @@ public:
 	}
 };
 
-/*******************\
- *  CMA Algorithm  *
-\*******************/
-class CMAAlgorithm : public HexMLAlgorithm<CMANetworkStrategy> {
+/**********************\
+ *  CSA-ES Algorithm  *
+\**********************/
+class CSAAlgorithm : public HexMLAlgorithm<CSANetworkStrategy> {
 private:
-    SelfPlayTwoPlayer<Game, CMANetworkStrategy> m_objective;
-    SelfRLCMA m_cma;
+    SelfPlayTwoPlayer<Game, CSANetworkStrategy> m_objective;
+    SelfRLCMA m_csa;
 public:
-    CMAAlgorithm() : HexMLAlgorithm(), m_objective(m_game, m_strategy) {
+    CSAAlgorithm() : HexMLAlgorithm(), m_objective(m_game, m_strategy) {
         m_strategy.setColor(Blue);
 
         std::size_t d = m_objective.numberOfVariables();
         std::size_t lambda = SelfRLCMA::suggestLambda(d);
 
-        m_cma.init(m_objective, m_objective.proposeStartingPoint(), lambda, 1.0);
+        m_csa.init(m_objective, m_objective.proposeStartingPoint(), lambda, 1.0);
     }
 
     void EpisodeStep(unsigned episode) {
-		m_cma.step(m_objective);
+		m_csa.step(m_objective);
     }
 
-    SelfRLCMA GetCMA() {
-        return m_cma;
+    SelfRLCMA GetCSA() {
+        return m_csa;
     }
 };
 }

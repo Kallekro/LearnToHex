@@ -28,6 +28,7 @@ public:
     virtual void printTrainingStatus() = 0;
     virtual void step() = 0;
     virtual void saveModel(std::string modelName) = 0;
+    virtual void loadModel(std::string modelName) = 0;
     size_t NumberOfEpisodes() { return m_number_of_episodes; }
     AlgorithmType GetAlgorithm() { return m_algorithm; }
 
@@ -63,25 +64,25 @@ protected:
 };
 
 
-/******************\
- *  CMA  Trainer  *
-\******************/
-class ModelTrainerCMA : public ModelTrainer<CMAAlgorithm> {
+/*********************\
+ *  CSA-ES  Trainer  *
+\*********************/
+class ModelTrainerCSA : public ModelTrainer<CSAAlgorithm> {
 private:
-    CMANetworkStrategy m_player2;
+    CSANetworkStrategy m_player2;
 public:
-    ModelTrainerCMA() {
+    ModelTrainerCSA() {
         m_number_of_episodes = 1000000;
         m_player2.setColor(Red);
     }
 
     void playExampleGame() override {
         Game game = m_algorithm.GetGame();
-        CMANetworkStrategy player1 = m_algorithm.GetStrategy();
-        SelfRLCMA cma = m_algorithm.GetCMA();
+        CSANetworkStrategy player1 = m_algorithm.GetStrategy();
+        SelfRLCMA csa = m_algorithm.GetCSA();
         game.reset();
-        player1.setParameters(cma.mean());
-        m_player2.setParameters(cma.mean());
+        player1.setParameters(csa.mean());
+        m_player2.setParameters(csa.mean());
         std::cout << game.asciiState() << std::endl;
         while (game.takeStrategyTurn({&player1, &m_player2})) {
             std::cout << game.asciiState() << std::endl;
@@ -93,11 +94,11 @@ public:
     void playAgainstRandom() override {
         RandomStrategy random_player;
         Game game = m_algorithm.GetGame();
-        CMANetworkStrategy player1 = m_algorithm.GetStrategy();
-        SelfRLCMA cma = m_algorithm.GetCMA();
+        CSANetworkStrategy player1 = m_algorithm.GetStrategy();
+        SelfRLCMA csa = m_algorithm.GetCSA();
 
         game.reset();
-        player1.setParameters(cma.mean());
+        player1.setParameters(csa.mean());
         // std::cout << game.asciiState() << std::endl;
         while (game.takeStrategyTurn({&player1, &random_player})) {
             //   std::cout << game.asciiState() << std::endl;
@@ -111,9 +112,9 @@ public:
     void playAgainstModel(std::string model) override {}
 
     void printTrainingStatus() override {
-        std::cout<<"Training games: " << m_steps << "\nSigma: " << m_algorithm.GetCMA().sigma() << std::endl;
-        std::cout<<"Value " << m_algorithm.GetCMA().solution().value << std::endl;
-        std::cout<< "Learn: " << m_algorithm.GetCMA().rate() << std::endl;
+        std::cout<<"Training games: " << m_steps << "\nSigma: " << m_algorithm.GetCSA().sigma() << std::endl;
+        std::cout<<"Value " << m_algorithm.GetCSA().solution().value << std::endl;
+        std::cout<< "Learn: " << m_algorithm.GetCSA().rate() << std::endl;
     }
 
     void step() override {
@@ -122,8 +123,12 @@ public:
     }
 
     void saveModel(std::string modelName) override {
-        m_algorithm.GetStrategy().setParameters(m_algorithm.GetCMA().mean());
+        m_algorithm.GetStrategy().setParameters(m_algorithm.GetCSA().mean());
         m_algorithm.GetStrategy().saveStrategy(modelName);
+    }
+
+    void loadModel(std::string modelName) override {
+        m_algorithm.GetStrategy().loadStrategy(modelName);
     }
 };
 
@@ -210,6 +215,10 @@ public:
     void saveModel(std::string modelName) override {
         m_algorithm.GetStrategy().saveStrategy(modelName);
     }
+
+    void loadModel(std::string modelName) override {
+        m_algorithm.GetStrategy().loadStrategy(modelName);
+    }
 };
 
 
@@ -279,17 +288,17 @@ void playHexTDVsHuman(std::string model) {
     std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
 }
 
-void playHexCMAVsHuman(std::string model) {
+void playHexCSAVsHuman(std::string model) {
     HumanStrategy human_player(true);
-    CMANetworkStrategy CMAplayer1;
+    CSANetworkStrategy CSAplayer1;
     if (model.length()) {
-        CMAplayer1.loadStrategy(model);
+        CSAplayer1.loadStrategy(model);
     }
     Game game;
     game.reset();
     initializePythonSettings();
     std::cout << game.asciiStatePython() << std::endl;
-    while (game.takeStrategyTurn({&CMAplayer1, &human_player})) {
+    while (game.takeStrategyTurn({&CSAplayer1, &human_player})) {
         std::cout << game.asciiStatePython() << std::endl;
     }
     std::cout << game.asciiStatePython() << std::endl;
@@ -304,7 +313,7 @@ int main (int argc, char* argv[]) {
     shark::random::globalRng().seed(time(NULL));
 
     if (argc > 3) {
-        std::cout << "usage: (what: traincma/cma, traintd/td, cmaplay, tdplay) (model)" << std::endl;
+        std::cout << "usage: (what: traines/es, traintd/td, esplay, tdplay) (model)" << std::endl;
         exit(1);
     }
 
@@ -312,27 +321,27 @@ int main (int argc, char* argv[]) {
     std::string model = (argc == 3) ? argv[2] : "";
 
     if (what.length() == 0) {
-        std::cout << "what to run? Options are: traincma (or cma), traintd (or td), cmaplay, tdplay" << std::endl;
+        std::cout << "what to run? Options are: traines (or es), traintd (or td), esplay, tdplay" << std::endl;
         getline(std::cin, what);
     }
 
     bool train_td;
-    if (boost::iequals(what, "traincma") || boost::iequals(what, "cma")) {
+    if (boost::iequals(what, "traines") || boost::iequals(what, "es")) {
         train_td = false;
     }
     else if (boost::iequals(what, "traintd") || boost::iequals(what, "td")) {
         train_td = true;
     }
-    else if (boost::iequals(what, "cmaplay")) {
+    else if (boost::iequals(what, "esplay")) {
         train_td = false;
-        playHexCMAVsHuman(model);
+        playHexCSAVsHuman(model);
         return 0;
     }
     else if (boost::iequals(what, "tdplay")) {
         playHexTDVsHuman(model);
         return 0;
     } else {
-        std::cout << "invalid input. Options are: traincma (or cma), traintd (or td), cmaplay, tdplay" << std::endl;
+        std::cout << "invalid input. Options are: traines (or es), traintd (or td), esplay, tdplay" << std::endl;
         return 1;
     }
 
@@ -340,8 +349,8 @@ int main (int argc, char* argv[]) {
         std::cout << "Training model with TD algorithm." << std::endl;
         trainingLoop<ModelTrainerTD>("TDmodel");
     } else {
-        std::cout << "Training model with CMA algorithm." << std::endl;
-        trainingLoop<ModelTrainerCMA>("CMAmodel");
+        std::cout << "Training model with CSA-ES algorithm." << std::endl;
+        trainingLoop<ModelTrainerCSA>("CSAmodel");
     }
 
     return 0;
