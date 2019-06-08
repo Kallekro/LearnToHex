@@ -398,7 +398,7 @@ namespace Hex {
 
             bool won;
             try {
-                won = m_take_move_action(moveAction); // b Hex.hpp:430
+                won = m_take_move_action(moveAction);
             } catch (std::invalid_argument& e) {
                 // std::cerr << "exception: " << e.what() << std::endl;
                 // std::cout << feasibleMoves << std::endl;
