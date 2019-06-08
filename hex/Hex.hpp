@@ -129,12 +129,16 @@ namespace Hex {
             return vecOut;
         }
 
-        // rotates field counter-clockwise
-        shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field) {
+        // rotates field
+        shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field, bool clockwise) {
             shark::blas::matrix<Hex::Tile> fieldCopy(Hex::BOARD_SIZE, Hex::BOARD_SIZE);
             for (int i=0; i < Hex::BOARD_SIZE; i++) {
-                shark::blas::vector<Hex::Tile> tmp = reverseVector(row(field, i));
-                column(fieldCopy, i) = tmp;
+                if (clockwise) {
+                    row(fieldCopy, i) = reverseVector(column(field, i));
+                } else {
+                    column(fieldCopy, i) = reverseVector(row(field, i));
+                }
+
             }
             return fieldCopy;
         }
@@ -143,7 +147,6 @@ namespace Hex {
         int flipToOriginalRotatedIndex(int i) {
             return i % Hex::BOARD_SIZE * Hex::BOARD_SIZE + Hex::BOARD_SIZE - ceil(i/Hex::BOARD_SIZE) - 1;
         }
-
 
         void loadStrategy(std::string model_path) {
             std::ifstream ifs(model_path);
@@ -374,7 +377,7 @@ namespace Hex {
             RealVector feasibleMoves;
             // find all feasible moves
             if (m_activePlayer == Red && strategy->type() != 3) {
-                fieldCopy = strategy->rotateField(m_gameboard);
+                fieldCopy = strategy->rotateField(m_gameboard, false );
                 feasibleMoves = m_feasible_move_actions( fieldCopy );
             } else {
                 fieldCopy = m_gameboard;

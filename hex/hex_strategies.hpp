@@ -62,7 +62,7 @@ public:
         m_moveNet.eval(inputs, outputs);
         return outputs[0];
     }
-
+/*
     // reverses a vector (for use in rotateField)
     blas::vector<Hex::Tile> reverseVector(blas::vector<Hex::Tile> vec) {
         blas::vector<Hex::Tile> vecOut(vec.size());
@@ -72,7 +72,7 @@ public:
         return vecOut;
     }
 
-    // rotates field counter-clockwise
+    // rotates field
     shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field, bool clockwise) {
         shark::blas::matrix<Hex::Tile> fieldCopy(Hex::BOARD_SIZE, Hex::BOARD_SIZE);
         for (int i=0; i < Hex::BOARD_SIZE; i++) {
@@ -90,7 +90,7 @@ public:
     int flipToOriginalRotatedIndex(int i) {
         return i % Hex::BOARD_SIZE * Hex::BOARD_SIZE + Hex::BOARD_SIZE - ceil(i/Hex::BOARD_SIZE) - 1;
     }
-
+*/
     // choose a move given possible move_values
     std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves, bool epsilon_greedy) {
         std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? -1 : -1) , -1 );
@@ -215,10 +215,10 @@ public:
     }
 };
 
-/************************\
- * CMA Network Strategy *
-\************************/
-class CMANetworkStrategy: public Hex::Strategy{
+/***************************\
+ * CSA-ES Network Strategy *
+\***************************/
+class CSANetworkStrategy: public Hex::Strategy{
 private:
 	LinearModel<RealVector> m_inLayer;
 	LinearModel<RealVector> m_hiddenLayer1;
@@ -229,9 +229,9 @@ private:
     unsigned m_color;
 
 public:
-	CMANetworkStrategy(){
-		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, 10 );
-		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 40 );
+	CSANetworkStrategy(){
+		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, 40 );
+		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 20 );
 //        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
 		m_moveOut.setStructure(m_hiddenLayer1.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
         m_moveNet = m_inLayer >> m_hiddenLayer1 >> m_moveOut;
