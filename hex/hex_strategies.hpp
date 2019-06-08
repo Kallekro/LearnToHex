@@ -18,21 +18,21 @@ namespace Hex {
 \***********************/
 class TDNetworkStrategy : public Strategy {
 private:
-    LinearModel<RealVector> m_inLayer;
-    LinearModel<RealVector> m_hiddenLayer;
+    LinearModel<RealVector, TanhNeuron> m_inLayer;
+    LinearModel<RealVector, TanhNeuron> m_hiddenLayer;
     LinearModel<RealVector, LogisticNeuron> m_outLayer;
 
     ConcatenatedModel<RealVector> m_moveNet;
 
     unsigned m_color;
 
-    double m_epsilon = 0.1;
+    double m_epsilon = 0.25;
 
 public:
 	TDNetworkStrategy(){
 		//m_inLayer.setStructure({BOARD_SIZE, BOARD_SIZE, 2}, {20, 3, 3});
         m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
-        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 120 );
+        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 80 );
         m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
     }
