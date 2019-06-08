@@ -9,6 +9,9 @@ struct RandomGameStats {
     double wins_vs_random = 0;
     double games_vs_random_played = 0;
     std::deque<double> last_wins;
+
+    double blue_winrate = 0;
+    double blue_winrate_last_x_games = 0;
 };
 
 struct PreviousModelStats {
@@ -32,6 +35,12 @@ public:
     size_t NumberOfEpisodes() { return m_number_of_episodes; }
     AlgorithmType GetAlgorithm() { return m_algorithm; }
 
+    void displayRandomPlayStats() {
+        std::cout << "Displaying stats from random games:" << std::endl;
+        std::cout << "Blue winrate: " << m_randomGameStats.blue_winrate << std::endl;
+        std::cout << "Blue winrate last " << m_randomGameStats.last_wins.size() << " games: " << m_randomGameStats.blue_winrate_last_x_games << std::endl;
+    }
+
     std::string lastModel;
 protected:
     AlgorithmType m_algorithm;
@@ -44,22 +53,21 @@ protected:
     void updateRandomPlayStats(bool blue_won) {
         m_randomGameStats.games_vs_random_played++;
         if (blue_won) {
-            std::cout << "Network strategy (blue) won!" << std::endl;
             m_randomGameStats.wins_vs_random++;
             m_randomGameStats.last_wins.push_back(1);
         } else {
-            std::cout << "Random strategy (red) won!" << std::endl;
             m_randomGameStats.last_wins.push_back(0);
         }
-        std::cout << "blue winrate: " << m_randomGameStats.wins_vs_random / m_randomGameStats.games_vs_random_played << std::endl;
         if (m_randomGameStats.last_wins.size() > 100) {
             m_randomGameStats.last_wins.pop_front();
         }
+        m_randomGameStats.blue_winrate = m_randomGameStats.wins_vs_random / m_randomGameStats.games_vs_random_played;
+
         double sum = 0;
         for (int i=0; i < m_randomGameStats.last_wins.size(); i++) {
             sum += m_randomGameStats.last_wins[i];
         }
-        std::cout << "blue winrate last " << m_randomGameStats.last_wins.size() << " games: " << sum / m_randomGameStats.last_wins.size() << std::endl;
+        m_randomGameStats.blue_winrate_last_x_games = sum / m_randomGameStats.last_wins.size();
     }
 };
 
@@ -103,9 +111,6 @@ public:
         while (game.takeStrategyTurn({&player1, &random_player})) {
             //   std::cout << game.asciiState() << std::endl;
         }
-
-        std::cout << game.asciiState() << std::endl;
-        std::cout << "end of random game" << std::endl;
         updateRandomPlayStats(game.getRank(Blue));
     }
 
@@ -172,8 +177,8 @@ public:
                 won = !game.takeStrategyTurn({NULL, &random_player});
             }
         }
-        std::cout << game.asciiState() << std::endl;
-        std::cout << "End of model vs random game." << std::endl;
+        //std::cout << game.asciiState() << std::endl;
+        //std::cout << "End of model vs random game." << std::endl;
         updateRandomPlayStats(game.getRank(Blue));
     }
 
@@ -234,7 +239,10 @@ void trainingLoop(std::string modelName) {
             trainer.saveModel(modelName);
         }
         if (i % 1500 == 0) { // Play against a random strategy and display stats
-            trainer.playAgainstRandom();
+            for (int game_i = 0; game_i < 100; game_i++) {
+                trainer.playAgainstRandom();
+            }
+            trainer.displayRandomPlayStats();
         }
         //if (i % 1000 == 0) { // Play against the previous model
         //    if (i != 0) {

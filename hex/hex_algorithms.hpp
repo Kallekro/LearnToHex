@@ -188,14 +188,9 @@ public:
 
 		//simulate
 		game.reset();
-        double max = BOARD_SIZE*BOARD_SIZE;
-		double count = 0;
-        while(game.takeStrategyTurn({&strategy0, &strategy1})){
-            count++;
-        }
-
-		double r = game.getRank(1);
-        return r;
+        while(game.takeStrategyTurn({&strategy0, &strategy1})){ }
+        // return reward of player 1
+        return game.getRank(1);
 	}
 };
 
