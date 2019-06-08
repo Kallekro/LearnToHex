@@ -216,6 +216,9 @@ class HexApp(tk.Frame):
 
 def main(model, algorithm):
     root = tk.Tk()
+    if algorithm.upper() != "TD" and algorithm.upper() != "ES":
+        sys.exit("Algorithm must be TD or ES.")
+    algorithm += "python"
     app = HexApp(root, model, algorithm)
     app.master.title("Hex")
     app.mainloop()
@@ -224,7 +227,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play hex.")
     parser.add_argument("--model", dest="model", default="")
     parser.add_argument("--make", dest="make", action='store_true')
-    parser.add_argument("--algorithm", dest="algorithm", default="esplay")
+    parser.add_argument("--algorithm", dest="algorithm", default="es", help="es/td")
     args = parser.parse_args()
 
     if args.make:
