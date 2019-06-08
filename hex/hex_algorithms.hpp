@@ -85,7 +85,7 @@ public:
                     // push state, encoded like the state used in the neural network
                     states.push_back(input);
                     // push value
-                    values.push_back(chosen_move.first);
+                    values.push_back( m_strategy.evaluateNetwork(input) );
 
                     won = !m_game.takeTurn(chosen_move.second);
 
@@ -141,7 +141,7 @@ public:
         m_strategy.GetMoveModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs, *state, derivative);
 
         // update weights
-        m_weights -= m_learning_rate*derivative;
+        m_weights += m_learning_rate*derivative;
     }
 };
 
