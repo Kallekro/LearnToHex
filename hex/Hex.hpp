@@ -414,7 +414,7 @@ namespace Hex {
         }
 
         int getRank(std::size_t player)const {
-            return player == m_playerWon ? 1 : 0;
+            return player == m_playerWon ? 0 : 1;
         }
 
         std::string asciiState() {
