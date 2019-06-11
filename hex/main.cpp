@@ -1,6 +1,7 @@
 #include <boost/algorithm/string.hpp>
 #include "Hex.hpp"
 #include "hex_algorithms.hpp"
+#include "DataLogger.hpp"
 
 using namespace shark;
 using namespace Hex;
@@ -14,20 +15,26 @@ struct RandomGameStats {
     double blue_winrate_last_x_games = 0;
 };
 
-struct PreviousModelStats {
-
-};
-
 /******************\
  *  Base Trainer  *
 \******************/
-template <class AlgorithmType>
+template <class AlgorithmType, class StrategyType>
 class ModelTrainer {
 public:
-    ModelTrainer() {}
+    ModelTrainer(std::string randomStatsFilename, std::string previousModelStatsFilename) {
+        m_random_stats_logger = new DataLogger(randomStatsFilename);
+        m_previous_model_stats_logger = new DataLogger(previousModelStatsFilename);
+    }
+    ~ModelTrainer() {
+        free(m_random_stats_logger);
+        free(m_previous_model_stats_logger);
+    }
+
+    std::string lastModel;
+
     virtual void playExampleGame() = 0;
     virtual void playAgainstRandom() = 0;
-    virtual void playAgainstModel(std::string model) = 0;
+    virtual int playGameWithStrategies(std::vector<StrategyType*> const& strategies) = 0;
     virtual void printTrainingStatus() = 0;
     virtual void step() = 0;
     virtual void saveModel(std::string modelName) = 0;
@@ -36,20 +43,49 @@ public:
     AlgorithmType GetAlgorithm() { return m_algorithm; }
 
     struct RandomGameStats GetRandomPlayStats() { return m_randomGameStats; }
+
     void displayRandomPlayStats() {
         std::cout << "Displaying stats from random games:" << std::endl;
         std::cout << "Blue winrate: " << m_randomGameStats.blue_winrate << std::endl;
         std::cout << "Blue winrate last " << m_randomGameStats.last_wins.size() << " games: " << m_randomGameStats.blue_winrate_last_x_games << std::endl;
     }
 
-    std::string lastModel;
+    void logRandomPlayStats() {
+        m_random_stats_logger->OutStream << m_steps << " "
+                                         << m_randomGameStats.blue_winrate << " "
+                                         << m_randomGameStats.blue_winrate_last_x_games << std::endl;
+    }
+
+    void playAgainstModel(std::string model) {
+        // initialize players with models
+        StrategyType player1 = m_algorithm.GetStrategy();
+        StrategyType player2;
+        player2.loadStrategy(model);
+
+        double total_games = 100;
+        double new_model_wins = 0;
+        for (int i=0; i < total_games; i++) {
+            new_model_wins += playGameWithStrategies({&player1, &player2});
+        }
+        std::cout << new_model_wins << std::endl;
+        double winrate = new_model_wins / total_games;
+
+        m_previous_model_stats_logger->OutStream << m_steps << " "
+                                                 << winrate << std::endl;
+
+        std::cout << winrate << " newest model winrate in " << total_games << " games played against previous model." << std::endl;
+    }
+
 protected:
     AlgorithmType m_algorithm;
     size_t m_number_of_episodes;
     size_t m_steps = 0;
 
     struct RandomGameStats m_randomGameStats;
-    //struct
+
+    // collect data
+    DataLogger* m_random_stats_logger;
+    DataLogger* m_previous_model_stats_logger;
 
     void updateRandomPlayStats(bool blue_lost) {
         m_randomGameStats.games_vs_random_played++;
@@ -70,18 +106,20 @@ protected:
         }
         m_randomGameStats.blue_winrate_last_x_games = sum / m_randomGameStats.last_wins.size();
     }
+
+
 };
 
 
 /*********************\
  *  CSA-ES  Trainer  *
 \*********************/
-class ModelTrainerCSA : public ModelTrainer<CSAAlgorithm> {
+class ModelTrainerCSA : public ModelTrainer<CSAAlgorithm, CSANetworkStrategy> {
 private:
     CSANetworkStrategy m_player2;
 public:
-    ModelTrainerCSA() {
-        m_number_of_episodes = 1000000;
+    ModelTrainerCSA(std::string randomStatsFilename, std::string previousModelStatsFilename) : ModelTrainer(randomStatsFilename, previousModelStatsFilename) {
+        m_number_of_episodes = 50000;
         m_player2.setColor(Red);
     }
 
@@ -115,7 +153,38 @@ public:
         updateRandomPlayStats(game.getRank(Blue));
     }
 
-    void playAgainstModel(std::string model) override {}
+
+    int playGameWithStrategies(std::vector<CSANetworkStrategy*> const& strategies) override {
+        Game game;
+        game.reset();
+        CSANetworkStrategy* ESplayer1 = (CSANetworkStrategy*)strategies[0];
+        CSANetworkStrategy* ESplayer2 = (CSANetworkStrategy*)strategies[1];
+        while (game.takeStrategyTurn({ESplayer1, ESplayer2})) {}
+        if (game.getRank(0) == 0) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+
+    //void playAgainstModel(std::string model) override {
+    //    // initialize players with models
+    //    CSANetworkStrategy ESplayer1 = m_algorithm.GetStrategy();
+    //    CSANetworkStrategy ESplayer2;
+    //    ESplayer2.loadStrategy(model);
+    //    Game game;
+//
+    //    double total_games = 100;
+    //    double new_model_wins = 0;
+    //    for (int i=0; i < total_games; i++) {
+    //        game.reset();
+    //        while (game.takeStrategyTurn({&ESplayer1, &ESplayer2})) { }
+    //        if (game.getRank(0) == 0) { new_model_wins++; }
+    //    }
+    //    double winrate = total_games / new_model_wins;
+    //    std::cout << winrate << " newest model winrate in " << total_games << " games played against previous model.";
+    //}
 
     void printTrainingStatus() override {
         std::cout<<"Training games: " << m_steps << "\nSigma: " << m_algorithm.GetCSA().sigma() << std::endl;
@@ -141,10 +210,10 @@ public:
 /******************\
  *  TD   Trainer  *
 \******************/
-class ModelTrainerTD : public ModelTrainer<TDAlgorithm> {
+class ModelTrainerTD : public ModelTrainer<TDAlgorithm, TDNetworkStrategy> {
 public:
-    ModelTrainerTD() {
-        m_number_of_episodes = 100000000;
+    ModelTrainerTD(std::string randomStatsFilename, std::string previousModelStatsFilename) : ModelTrainer(randomStatsFilename, previousModelStatsFilename) {
+        m_number_of_episodes = 50000;
     }
 
     void playExampleGame() override {
@@ -162,6 +231,7 @@ public:
         }
         std::cout << "End of example game." << std::endl;
     }
+
     void playAgainstRandom() override {
         RandomStrategy random_player;
         TDNetworkStrategy TDplayer1 = m_algorithm.GetStrategy();
@@ -182,31 +252,54 @@ public:
         updateRandomPlayStats(game.getRank(Blue));
     }
 
-    void playAgainstModel(std::string model) override {
-        // initialize players with models
-        TDNetworkStrategy TDplayer1 = m_algorithm.GetStrategy();
-        TDNetworkStrategy TDplayer2;
-        TDplayer2.loadStrategy(model);
+    int playGameWithStrategies(std::vector<TDNetworkStrategy*> const& strategies) override {
         Game game;
         game.reset();
-
-        double total_games = 1000;
-        double new_model_wins = 0;
-        for (int i=0; i < total_games; i++) {
-            bool won = false;
-            while (!won) {
-                std::pair<double, int> chosen_move;
-                if (game.ActivePlayer() == Blue) {
-                    chosen_move = TDplayer1.getChosenMove(game, false);
-                } else {
-                    chosen_move = TDplayer2.getChosenMove(game, false);
-                }
-                won = !game.takeTurn(chosen_move.second);
+        bool won = false;
+        TDNetworkStrategy* TDplayer1 = (TDNetworkStrategy*)strategies[0];
+        TDNetworkStrategy* TDplayer2 = (TDNetworkStrategy*)strategies[1];
+        while (!won) {
+            std::pair<double, int> chosen_move;
+            if (game.ActivePlayer() == Blue) {
+                chosen_move = TDplayer1->getChosenMove(game, false);
+            } else {
+                chosen_move = TDplayer2->getChosenMove(game, false);
             }
+            won = !game.takeTurn(chosen_move.second);
         }
-        double winrate = total_games / new_model_wins;
-        std::cout << winrate << " winrate in " << total_games << " games played against previous model.";
+        if (game.getRank(0) == 0) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
+
+    //void playAgainstModel(std::string model) override {
+    //    // initialize players with models
+    //    TDNetworkStrategy TDplayer1 = m_algorithm.GetStrategy();
+    //    TDNetworkStrategy TDplayer2;
+    //    TDplayer2.loadStrategy(model);
+    //    Game game;
+//
+    //    double total_games = 100;
+    //    double new_model_wins = 0;
+    //    for (int i=0; i < total_games; i++) {
+    //        bool won = false;
+    //        game.reset();
+    //        while (!won) {
+    //            std::pair<double, int> chosen_move;
+    //            if (game.ActivePlayer() == Blue) {
+    //                chosen_move = TDplayer1.getChosenMove(game, false);
+    //            } else {
+    //                chosen_move = TDplayer2.getChosenMove(game, false);
+    //            }
+    //            won = !game.takeTurn(chosen_move.second);
+    //        }
+    //        if (game.getRank(0) == 0) { new_model_wins++; }
+    //    }
+    //    double winrate = new_model_wins / total_games;
+    //    std::cout << winrate << " newest model winrate in " << total_games << " games played against previous model.";
+    //}
 
     void printTrainingStatus() override {
         std::cout << "Step " << m_steps << std::endl;
@@ -232,18 +325,20 @@ public:
 \*******************/
 template<class TrainerType>
 void trainingLoop(std::string modelName) {
-    TrainerType trainer;
+    std::string prefix = modelName + std::to_string(BOARD_SIZE) + "x" + std::to_string(BOARD_SIZE);
+    TrainerType trainer(prefix + "randomStats.log", prefix + "previousModelStats.log");
     double highest_winrate = 0;
     for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
         if (i % 1000 == 0) { // Play example game and save model
             trainer.playExampleGame();
             trainer.saveModel(modelName);
         }
-        if (i % 1500 == 0) { // Play against a random strategy and display stats
+        if (i % 100 == 0) { // Play against a random strategy and display stats
             for (int game_i = 0; game_i < 100; game_i++) {
                 trainer.playAgainstRandom();
             }
             trainer.displayRandomPlayStats();
+            trainer.logRandomPlayStats();
 
             double cur_model_winrate = trainer.GetRandomPlayStats().blue_winrate_last_x_games;
             if (cur_model_winrate > highest_winrate) {
@@ -251,14 +346,14 @@ void trainingLoop(std::string modelName) {
                 trainer.saveModel("highestWR");
             }
         }
-        //if (i % 1000 == 0) { // Play against the previous model
-        //    if (i != 0) {
-        //        trainer.playAgainstModel(trainer.lastModel);
-        //    }
-        //    std::string modelName = "TDModel_autosave";
-        //    trainer.saveModel(modelName);
-        //    trainer.lastModel = modelName + ".model";
-        //}
+        if (i % 100 == 0) { // Play against the previous model
+            if (i != 0) {
+                trainer.playAgainstModel(trainer.lastModel);
+            }
+            std::string modelName = prefix + "_autosave";
+            trainer.saveModel(modelName);
+            trainer.lastModel = modelName + ".model";
+        }
         if (i % 100 == 0) {
             //std::cout << std::endl << "Training status: " << std::endl;
             trainer.printTrainingStatus();
