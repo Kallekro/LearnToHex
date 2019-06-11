@@ -15,6 +15,13 @@ struct RandomGameStats {
     double blue_winrate_last_x_games = 0;
 };
 
+struct PreviousModelGameStats {
+    double total_wins = 0;
+    double games_played = 0;
+
+    double new_model_winrate = 0;
+};
+
 /******************\
  *  Base Trainer  *
 \******************/
@@ -29,12 +36,14 @@ public:
 
         randomStatsTotalWinrateOutStream.open("logs/" + randomStatsFilename + "_totalWinrate.log");
         randomStatsCurrentWinrateOutStream.open("logs/" + randomStatsFilename + "_currentWinrate.log");
-        previousModelStatsOutStream.open("logs/" + previousModelStatsFilename + ".log");
+        previousModelStatsCurrentOutStream.open("logs/" + previousModelStatsFilename + "_currentWinrate.log");
+        previousModelStatsTotalOutStream.open("logs/" + previousModelStatsFilename + "_totalWinrate.log");
     }
     ~ModelTrainer() {
         randomStatsTotalWinrateOutStream.close();
         randomStatsCurrentWinrateOutStream.close();
-        previousModelStatsOutStream.close();
+        previousModelStatsCurrentOutStream.close();
+        previousModelStatsTotalOutStream.close();
     }
 
     std::string lastModel;
@@ -78,8 +87,15 @@ public:
         }
         double winrate = new_model_wins / total_games;
 
-        previousModelStatsOutStream << m_steps << " "
-                                    << winrate << std::endl;
+        m_previousModelGameStats.games_played += total_games;
+        m_previousModelGameStats.total_wins += new_model_wins;
+        m_previousModelGameStats.new_model_winrate = m_previousModelGameStats.total_wins / m_previousModelGameStats.games_played;
+
+        previousModelStatsCurrentOutStream << m_steps << " "
+                                           << winrate << std::endl;
+        previousModelStatsTotalOutStream << m_steps << " "
+                                         << m_previousModelGameStats.new_model_winrate << std::endl;
+
         if (!m_silent) {
             std::cout << winrate << " newest model winrate in " << total_games << " games played against previous model." << std::endl;
         }
@@ -94,10 +110,12 @@ protected:
     size_t m_steps = 0;
 
     struct RandomGameStats m_randomGameStats;
+    struct PreviousModelGameStats m_previousModelGameStats;
 
 	std::ofstream randomStatsTotalWinrateOutStream;
 	std::ofstream randomStatsCurrentWinrateOutStream;
-    std::ofstream previousModelStatsOutStream;
+    std::ofstream previousModelStatsCurrentOutStream;
+    std::ofstream previousModelStatsTotalOutStream;
 
     void updateRandomPlayStats(bool blue_lost) {
         m_randomGameStats.games_vs_random_played++;
@@ -340,11 +358,11 @@ void trainingLoop(std::string modelName) {
     TrainerType trainer(prefix + "randomStats", prefix + "previousModelStats");
     double highest_winrate = 0;
     for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
-        if (i % 1000 == 0) { // Play example game and save model
+        if (i % 1000 == 0 && i != 0) { // Play example game and save model
             trainer.playExampleGame();
             trainer.saveModel(modelName);
         }
-        if (i % 100 == 0) { // Play against a random strategy and display stats
+        if (i % 100 == 0 && i != 0) { // Play against a random strategy and display stats
             for (int game_i = 0; game_i < 100; game_i++) {
                 trainer.playAgainstRandom();
             }
@@ -365,7 +383,7 @@ void trainingLoop(std::string modelName) {
             trainer.saveModel(modelName);
             trainer.lastModel = modelName + ".model";
         }
-        if (i % 100 == 0) {
+        if (i % 100 == 0 ) {
             //std::cout << std::endl << "Training status: " << std::endl;
             trainer.printTrainingStatus();
 

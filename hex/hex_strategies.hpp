@@ -64,35 +64,7 @@ public:
         m_moveNet.eval(inputs, outputs);
         return outputs[0];
     }
-/*
-    // reverses a vector (for use in rotateField)
-    blas::vector<Hex::Tile> reverseVector(blas::vector<Hex::Tile> vec) {
-        blas::vector<Hex::Tile> vecOut(vec.size());
-        for (int i=0; i < vec.size(); i++) {
-            vecOut(vec.size() - i - 1) = vec(i);
-        }
-        return vecOut;
-    }
 
-    // rotates field
-    shark::blas::matrix<Hex::Tile> rotateField(shark::blas::matrix<Hex::Tile> field, bool clockwise) {
-        shark::blas::matrix<Hex::Tile> fieldCopy(Hex::BOARD_SIZE, Hex::BOARD_SIZE);
-        for (int i=0; i < Hex::BOARD_SIZE; i++) {
-            if (clockwise) {
-                row(fieldCopy, i) = reverseVector(column(field, i));
-            } else {
-                column(fieldCopy, i) = reverseVector(row(field, i));
-            }
-
-        }
-        return fieldCopy;
-    }
-
-    // takes a 1D index of a matrix and converts it to the corresponding 1D index of the same matrix, but rotated clockwise, undoing the counterclockwise rotation
-    int flipToOriginalRotatedIndex(int i) {
-        return i % Hex::BOARD_SIZE * Hex::BOARD_SIZE + Hex::BOARD_SIZE - ceil(i/Hex::BOARD_SIZE) - 1;
-    }
-*/
     // choose a move given possible move_values
     std::pair<double, int> chooseMove(std::vector<std::pair<double, int>> move_values, unsigned activeplayer, RealVector feasible_moves, bool epsilon_greedy) {
         std::pair<double, int> chosen_move( std::numeric_limits<double>::max() * (activeplayer==Blue ? -1 : -1) , -1 );
@@ -267,40 +239,12 @@ public:
                 } else if (field(i,j).tileState != Hex::Empty) {
                     inputs((j*Hex::BOARD_SIZE+i)) = -1.0;
                 }
-                //    if (m_color == Hex::Red ) {
-				//	    inputs(2*(j*Hex::BOARD_SIZE+i)) = 1.0;
-                //    } else{
-				//	    inputs(2*(i*Hex::BOARD_SIZE+j)) = 1.0;
-                //    }
-                //}
-				//else if(field(i,j).tileState != Hex::Empty ) { // Channel where other players tiles are 1
-                //    if (m_color == Hex::Red) {
-                //        inputs(2*(j*Hex::BOARD_SIZE+i)+1) = 1.0;
-                //    } else {
-                //        inputs(2*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
-                //    }
-				//}
-
-				//if ( (m_color == Hex::Blue && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Red  && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					//inputs(4*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
-				//}
-                //if ((m_color == Hex::Red  && (i == 0 || i == Hex::BOARD_SIZE-1)) || (m_color == Hex::Blue && (j == 0 || j == Hex::BOARD_SIZE-1))) {
-					//inputs(4*(i*Hex::BOARD_SIZE+j)+3) = 1.0;
-				//}
 		    }
         }
 
 		//Get raw response for everything
 		RealVector response = m_moveNet(inputs);
-
-
-		////return only the output at player position
-		//RealVector output(121, 1.0);
-		//for(std::size_t i = 0; i != 7; ++i){
-			//output(i) = response(7*(y*7+x) + i);
-		//}
 		return response;
-
 	}
 
 	std::size_t numParameters() const override{
