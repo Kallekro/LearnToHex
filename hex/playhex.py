@@ -227,7 +227,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Play hex.")
     parser.add_argument("--model", dest="model", default="")
     parser.add_argument("--make", dest="make", action='store_true')
-    parser.add_argument("--algorithm", dest="algorithm", default="es", help="es/td")
+    parser.add_argument("--algorithm", dest="algorithm", required=True, help="es/td")
     args = parser.parse_args()
 
     if args.make:
