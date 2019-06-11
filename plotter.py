@@ -2,20 +2,23 @@
 
 import sys
 import math
-#### For plotting data 
+#### For plotting data
 import matplotlib.pyplot as plt
 
 def main():
     args = sys.argv[1:]
-    if len(args) < 1:
-        print ("usage : file1 file2*")
+    if len(args) < 2:
+        print ("usage : title file1 file2*")
         exit(-1)
+
+    title = args[0]
+    files = args[1:]
 
     # list holding data to be plotted
     data = []
-    
-    # open, read and save data from files 
-    for fname in args:
+
+    # open, read and save data from files
+    for fname in files:
         x, y = [], []
         with open(fname, 'r') as f:
             lines = f.readlines()
@@ -27,13 +30,12 @@ def main():
                 x.append( float(dp[0]) )
                 y.append( float(dp[1]) )
             fdata =(header, x, y)
-            data.append( fdata ) 
-    
+            data.append( fdata )
+
     header = data[0][0]
     splt   = header.split(',')
-    title  = splt[0]
-    xlabel = splt[1]
-    ylabel = splt[2]
+    xlabel = splt[0]
+    ylabel = splt[1]
 
     fig = plt.figure()
     for header, x, y in data:
