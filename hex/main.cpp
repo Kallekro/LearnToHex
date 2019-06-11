@@ -1,7 +1,7 @@
 #include <boost/algorithm/string.hpp>
+#include <boost/filesystem.hpp>
 #include "Hex.hpp"
 #include "hex_algorithms.hpp"
-#include "DataLogger.hpp"
 
 using namespace shark;
 using namespace Hex;
@@ -22,12 +22,19 @@ template <class AlgorithmType, class StrategyType>
 class ModelTrainer {
 public:
     ModelTrainer(std::string randomStatsFilename, std::string previousModelStatsFilename) {
-        m_random_stats_logger = new DataLogger(randomStatsFilename);
-        m_previous_model_stats_logger = new DataLogger(previousModelStatsFilename);
+        boost::filesystem::path modelsdir("models/");
+        boost::filesystem::create_directory(modelsdir);
+        boost::filesystem::path logsdir("logs/");
+        boost::filesystem::create_directory(logsdir);
+
+        randomStatsTotalWinrateOutStream.open("logs/" + randomStatsFilename + "_totalWinrate.log");
+        randomStatsCurrentWinrateOutStream.open("logs/" + randomStatsFilename + "_currentWinrate.log");
+        previousModelStatsOutStream.open("logs/" + previousModelStatsFilename + ".log");
     }
     ~ModelTrainer() {
-        free(m_random_stats_logger);
-        free(m_previous_model_stats_logger);
+        randomStatsTotalWinrateOutStream.close();
+        randomStatsCurrentWinrateOutStream.close();
+        previousModelStatsOutStream.close();
     }
 
     std::string lastModel;
@@ -45,47 +52,52 @@ public:
     struct RandomGameStats GetRandomPlayStats() { return m_randomGameStats; }
 
     void displayRandomPlayStats() {
+        if (m_silent) { return; }
         std::cout << "Displaying stats from random games:" << std::endl;
         std::cout << "Blue winrate: " << m_randomGameStats.blue_winrate << std::endl;
         std::cout << "Blue winrate last " << m_randomGameStats.last_wins.size() << " games: " << m_randomGameStats.blue_winrate_last_x_games << std::endl;
     }
 
     void logRandomPlayStats() {
-        m_random_stats_logger->OutStream << m_steps << " "
-                                         << m_randomGameStats.blue_winrate << " "
-                                         << m_randomGameStats.blue_winrate_last_x_games << std::endl;
+        randomStatsTotalWinrateOutStream << m_steps << " "
+                                         << m_randomGameStats.blue_winrate << std::endl;
+        randomStatsCurrentWinrateOutStream << m_steps << " "
+                                           << m_randomGameStats.blue_winrate_last_x_games << std::endl;
     }
 
     void playAgainstModel(std::string model) {
         // initialize players with models
         StrategyType player1 = m_algorithm.GetStrategy();
         StrategyType player2;
-        player2.loadStrategy(model);
+        player2.loadStrategy("models/" + model);
 
         double total_games = 100;
         double new_model_wins = 0;
         for (int i=0; i < total_games; i++) {
             new_model_wins += playGameWithStrategies({&player1, &player2});
         }
-        std::cout << new_model_wins << std::endl;
         double winrate = new_model_wins / total_games;
 
-        m_previous_model_stats_logger->OutStream << m_steps << " "
-                                                 << winrate << std::endl;
+        previousModelStatsOutStream << m_steps << " "
+                                    << winrate << std::endl;
+        if (!m_silent) {
+            std::cout << winrate << " newest model winrate in " << total_games << " games played against previous model." << std::endl;
+        }
 
-        std::cout << winrate << " newest model winrate in " << total_games << " games played against previous model." << std::endl;
     }
 
 protected:
+    bool m_silent = false;
+
     AlgorithmType m_algorithm;
     size_t m_number_of_episodes;
     size_t m_steps = 0;
 
     struct RandomGameStats m_randomGameStats;
 
-    // collect data
-    DataLogger* m_random_stats_logger;
-    DataLogger* m_previous_model_stats_logger;
+	std::ofstream randomStatsTotalWinrateOutStream;
+	std::ofstream randomStatsCurrentWinrateOutStream;
+    std::ofstream previousModelStatsOutStream;
 
     void updateRandomPlayStats(bool blue_lost) {
         m_randomGameStats.games_vs_random_played++;
@@ -130,12 +142,14 @@ public:
         game.reset();
         player1.setParameters(csa.mean());
         m_player2.setParameters(csa.mean());
-        std::cout << game.asciiState() << std::endl;
+        if (!m_silent) { std::cout << game.asciiState() << std::endl; }
         while (game.takeStrategyTurn({&player1, &m_player2})) {
-            std::cout << game.asciiState() << std::endl;
+            if (!m_silent) { std::cout << game.asciiState() << std::endl; }
         }
-        std::cout << game.asciiState() << std::endl;
-        std::cout << "End of example game." << std::endl;
+        if (!m_silent) {
+            std::cout << game.asciiState() << std::endl;
+            std::cout << "End of example game." << std::endl;
+        }
     }
 
     void playAgainstRandom() override {
@@ -146,10 +160,7 @@ public:
 
         game.reset();
         player1.setParameters(csa.mean());
-        // std::cout << game.asciiState() << std::endl;
-        while (game.takeStrategyTurn({&player1, &random_player})) {
-            //   std::cout << game.asciiState() << std::endl;
-        }
+        while (game.takeStrategyTurn({&player1, &random_player})) { }
         updateRandomPlayStats(game.getRank(Blue));
     }
 
@@ -198,11 +209,11 @@ public:
 
     void saveModel(std::string modelName) override {
         m_algorithm.GetStrategy().setParameters(m_algorithm.GetCSA().mean());
-        m_algorithm.GetStrategy().saveStrategy(modelName);
+        m_algorithm.GetStrategy().saveStrategy("models/" + modelName);
     }
 
     void loadModel(std::string modelName) override {
-        m_algorithm.GetStrategy().loadStrategy(modelName);
+        m_algorithm.GetStrategy().loadStrategy("models/" + modelName);
     }
 };
 
@@ -220,16 +231,18 @@ public:
         Game game = m_algorithm.GetGame();
         TDNetworkStrategy TDplayer1 = m_algorithm.GetStrategy();
         game.reset();
-        std::cout << game.asciiState() << std::endl;
+        if (!m_silent) { std::cout << game.asciiState() << std::endl; }
         bool won = false;
         unsigned state = 0;
         while (!won) {
             std::pair<double, int> chosen_move = TDplayer1.getChosenMove(game, false);
             won = !game.takeTurn(chosen_move.second);
-            std::cout << game.asciiState() << std::endl;
+            if (!m_silent) { std::cout << game.asciiState() << std::endl; }
             state++;
         }
-        std::cout << "End of example game." << std::endl;
+        if (!m_silent) {
+           std::cout << "End of example game." << std::endl;
+        }
     }
 
     void playAgainstRandom() override {
@@ -247,8 +260,6 @@ public:
                 won = !game.takeStrategyTurn({NULL, &random_player});
             }
         }
-        //std::cout << game.asciiState() << std::endl;
-        //std::cout << "End of model vs random game." << std::endl;
         updateRandomPlayStats(game.getRank(Blue));
     }
 
@@ -311,11 +322,11 @@ public:
     }
 
     void saveModel(std::string modelName) override {
-        m_algorithm.GetStrategy().saveStrategy(modelName);
+        m_algorithm.GetStrategy().saveStrategy("models/" + modelName);
     }
 
     void loadModel(std::string modelName) override {
-        m_algorithm.GetStrategy().loadStrategy(modelName);
+        m_algorithm.GetStrategy().loadStrategy("models/" + modelName);
     }
 };
 
@@ -326,7 +337,7 @@ public:
 template<class TrainerType>
 void trainingLoop(std::string modelName) {
     std::string prefix = modelName + std::to_string(BOARD_SIZE) + "x" + std::to_string(BOARD_SIZE);
-    TrainerType trainer(prefix + "randomStats.log", prefix + "previousModelStats.log");
+    TrainerType trainer(prefix + "randomStats", prefix + "previousModelStats");
     double highest_winrate = 0;
     for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
         if (i % 1000 == 0) { // Play example game and save model
