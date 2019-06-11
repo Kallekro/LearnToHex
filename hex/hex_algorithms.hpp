@@ -33,7 +33,6 @@ class TDAlgorithm : public HexMLAlgorithm<TDNetworkStrategy> {
 private:
     RealVector m_weights;
     double m_learning_rate = 0.1;
-    double m_lambda = 0.7;
 public:
     TDAlgorithm() : HexMLAlgorithm() {
         m_weights = blas::normal(random::globalRng(), m_strategy.numParameters(), 0.0, 1.0/m_strategy.numParameters(), blas::cpu_tag());
@@ -109,36 +108,32 @@ public:
         // push last "next" value (for t+1)
         nextValues.push_back(1.0);
 
-        // Now we calculate the derivative of the model after evaluating the batched states
+        // Type of state and value points
         RealVector statePoint((Hex::BOARD_SIZE*Hex::BOARD_SIZE));
         RealVector valuePoint(1);
+
         // batch of states
         Batch<RealVector>::type stateBatch = Batch<RealVector>::createBatch(statePoint, states.size());
         // batch of values/outputs/predictions
         Batch<RealVector>::type valueBatch = Batch<RealVector>::createBatch(valuePoint, states.size());
 
+        // fill batches
         for (int i=0; i < states.size(); i++) {
             getBatchElement(stateBatch, i) = states[i];
             getBatchElement(valueBatch, i)(0) = nextValues(i);
         }
-
         //std::cout << "R: " << rewards << " V: " << values << " NV: " << nextValues << std::endl;
 
-        // eligibility trace (not used right now)
-        RealVector eTrace(step_i, 0.0);
-        for (int k=1 ; k < step_i; k++) {
-            eTrace(k) = pow(m_lambda, step_i - k);
-        }
-
         // computes td-errors
-        RealMatrix coeffs(states.size(), m_strategy.GetMoveModel().outputShape().numElements());
-        column(coeffs, 0) = (rewards + nextValues - values); //* eTrace;
+        RealMatrix tdErrors(states.size(), m_strategy.GetMoveModel().outputShape().numElements());
+        column(tdErrors, 0) = (rewards + nextValues - values);
 
         boost::shared_ptr<State> state = m_strategy.createState();
+        // compute an internal state of the model, used for computing derivatives
         m_strategy.GetMoveModel().eval(stateBatch, valueBatch, *state);
 
         RealVector derivative;
-        m_strategy.GetMoveModel().weightedParameterDerivative(stateBatch, valueBatch, coeffs, *state, derivative);
+        m_strategy.GetMoveModel().weightedParameterDerivative(stateBatch, valueBatch, tdErrors, *state, derivative);
 
         // update weights
         m_weights += m_learning_rate*derivative;

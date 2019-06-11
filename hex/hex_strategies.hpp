@@ -18,22 +18,26 @@ namespace Hex {
 \***********************/
 class TDNetworkStrategy : public Strategy {
 private:
-    LinearModel<RealVector, TanhNeuron> m_inLayer;
-    LinearModel<RealVector, TanhNeuron> m_hiddenLayer;
+    LinearModel<RealVector, RectifierNeuron> m_inLayer;
+    LinearModel<RealVector, RectifierNeuron> m_hiddenLayer;
     LinearModel<RealVector, LogisticNeuron> m_outLayer;
-
     ConcatenatedModel<RealVector> m_moveNet;
 
-    unsigned m_color;
+    // define input and output dimensions of network
+    int inputDim = Hex::BOARD_SIZE * Hex::BOARD_SIZE;
+    int outputDim = 1;
+    // Define shape of hidden layer
+    int hiddenIn = 80;
+    int hiddenOut = 40;
 
-    double m_epsilon = 0.25;
+    unsigned m_color;
+    double m_epsilon = 0.1;
 
 public:
 	TDNetworkStrategy(){
-		//m_inLayer.setStructure({BOARD_SIZE, BOARD_SIZE, 2}, {20, 3, 3});
-        m_inLayer.setStructure(Hex::BOARD_SIZE*Hex::BOARD_SIZE, Hex::BOARD_SIZE*Hex::BOARD_SIZE);
-        m_hiddenLayer.setStructure(m_inLayer.outputShape(), 80 );
-        m_outLayer.setStructure(m_hiddenLayer.outputShape(), 1);
+        m_inLayer.setStructure(inputDim, hiddenIn);
+        m_hiddenLayer.setStructure(hiddenIn, hiddenOut );
+        m_outLayer.setStructure(hiddenOut , 1);
         m_moveNet = m_inLayer >> m_hiddenLayer >> m_outLayer;
     }
 
@@ -49,8 +53,6 @@ public:
                 else if(field(i,j).tileState != Hex::Empty ) {  // Channel where other players tiles are
                     //inputs(3*(i*Hex::BOARD_SIZE+j)+1) = 1.0;
                     inputs(i*Hex::BOARD_SIZE+j) = -1.0;
-                } else {                                        // Empty tile
-                    //inputs(3*(i*Hex::BOARD_SIZE+j)+2) = 1.0;
                 }
             }
         }
@@ -221,20 +223,22 @@ public:
 class CSANetworkStrategy: public Hex::Strategy{
 private:
 	LinearModel<RealVector> m_inLayer;
-	LinearModel<RealVector> m_hiddenLayer1;
+	LinearModel<RealVector, TanhNeuron> m_hiddenLayer1;
+    LinearModel<RealVector, TanhNeuron> m_hiddenLayer2;
 	LinearModel<RealVector> m_moveOut;
 
-	ConcatenatedModel<RealVector> m_moveNet ;
+	ConcatenatedModel<RealVector> m_moveNet;
 
     unsigned m_color;
 
 public:
 	CSANetworkStrategy(){
-		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, 40 );
-		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 20 );
+		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, 120 );
+		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 120 );
+        m_hiddenLayer2.setStructure(m_hiddenLayer1.outputShape(), 20 );
 //        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
-		m_moveOut.setStructure(m_hiddenLayer1.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
-        m_moveNet = m_inLayer >> m_hiddenLayer1 >> m_moveOut;
+		m_moveOut.setStructure(m_hiddenLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
+        m_moveNet = m_inLayer >> m_hiddenLayer1 >>  m_hiddenLayer2 >> m_moveOut;
 	}
 
     void save(OutArchive & archive) {

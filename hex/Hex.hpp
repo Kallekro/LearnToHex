@@ -9,7 +9,7 @@
 using namespace shark;
 
 namespace Hex {
-    static const unsigned BOARD_SIZE = 5;
+    static const unsigned BOARD_SIZE = 3;
 
     enum TileState : unsigned {
         Blue = 0,
@@ -218,13 +218,14 @@ namespace Hex {
         unsigned int m_sample_move_action(RealVector const& action_prob)const{
             double u = random::uni(random::globalRng(), 0.0, 1.0);
 		    double cumulant = 0.0;
+            unsigned int max = 0;
             for (std::size_t i=0; i < action_prob.size(); i++) {
                 cumulant += action_prob(i);
                 if (cumulant > u) {
                     return i;
                 }
             }
-            action_prob.size() - 1;
+            return action_prob.size() - 1;
         }
 
         // Takes a specific action.
@@ -388,7 +389,7 @@ namespace Hex {
             // sample an action and take turn
             double moveAction = (m_activePlayer == Red && strategy->type() != 3
                                 ? strategy->flipToOriginalRotatedIndex(m_sample_move_action(moveProbs))
-                                : m_sample_move_action(moveProbs) );
+                                : m_sample_move_action(moveProbs));
 
             return takeTurn(moveAction);
         }
