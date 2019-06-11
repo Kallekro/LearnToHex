@@ -222,23 +222,28 @@ public:
 \***************************/
 class CSANetworkStrategy: public Hex::Strategy{
 private:
-	LinearModel<RealVector> m_inLayer;
-	LinearModel<RealVector, TanhNeuron> m_hiddenLayer1;
-    LinearModel<RealVector, TanhNeuron> m_hiddenLayer2;
-	LinearModel<RealVector> m_moveOut;
+	LinearModel<RealVector, RectifierNeuron> m_inLayer;
+	LinearModel<RealVector, RectifierNeuron> m_hiddenLayer1;
+	LinearModel<RealVector, RectifierNeuron> m_moveOut;
 
 	ConcatenatedModel<RealVector> m_moveNet;
+
+    // define input and output dimensions of network
+    int inputDim = Hex::BOARD_SIZE * Hex::BOARD_SIZE;
+    int outputDim = Hex::BOARD_SIZE*Hex::BOARD_SIZE;
+    // Define shape of hidden layer
+    int hiddenIn = 80;
+    int hiddenOut = 40;
 
     unsigned m_color;
 
 public:
 	CSANetworkStrategy(){
-		m_inLayer.setStructure(Hex::BOARD_SIZE * Hex::BOARD_SIZE, 120 );
-		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), 120 );
-        m_hiddenLayer2.setStructure(m_hiddenLayer1.outputShape(), 20 );
-//        m_moveLayer3.setStructure(m_moveLayer2.outputShape(), {60,3,3});
-		m_moveOut.setStructure(m_hiddenLayer2.outputShape(), Hex::BOARD_SIZE*Hex::BOARD_SIZE);
-        m_moveNet = m_inLayer >> m_hiddenLayer1 >>  m_hiddenLayer2 >> m_moveOut;
+		m_inLayer.setStructure(inputDim, hiddenIn );
+		m_hiddenLayer1.setStructure(m_inLayer.outputShape(), hiddenOut);
+		m_moveOut.setStructure(m_hiddenLayer1.outputShape(), outputDim);
+
+        m_moveNet = m_inLayer >> m_hiddenLayer1 >> m_moveOut;
 	}
 
     void save(OutArchive & archive) {
