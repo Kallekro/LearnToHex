@@ -279,16 +279,21 @@ void initializePythonSettings() {
     std::cout << "__BOARD_SIZE__ " << BOARD_SIZE << std::endl;
 }
 
-void playHexTDVsHuman(std::string model) {
-    HumanStrategy human_player(true);
+void playHexTDVsHuman(std::string model, bool for_python) {
+    HumanStrategy human_player(for_python);
     TDNetworkStrategy TDplayer1;
     if (model.length()) {
         TDplayer1.loadStrategy(model);
     }
     Game game;
     game.reset();
-    initializePythonSettings();
-    std::cout << game.asciiStatePython() << std::endl;
+    if (for_python) {
+        initializePythonSettings();
+        std::cout << game.asciiStatePython() << std::endl;
+    } else {
+        std::cout << game.asciiState() << std::endl;
+    }
+
     bool won = false;
     while (!won) {
         if (game.ActivePlayer() == Blue) {
@@ -297,27 +302,45 @@ void playHexTDVsHuman(std::string model) {
         } else {
             won = !game.takeStrategyTurn({NULL, &human_player});
         }
-        std::cout << game.asciiStatePython() << std::endl;
+        std::cout << (for_python ? game.asciiStatePython() : game.asciiState()) << std::endl;
+
     }
-    std::cout << game.asciiStatePython() << std::endl;
-    std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
+    if (for_python) {
+        std::cout << game.asciiStatePython() << std::endl;
+        std::cout << "__GAME_OVER__ " << (game.getRank(0) == 0 ? 0 : 1) << std::endl;
+    } else {
+        std::cout << game.asciiState() << std::endl;
+        std::cout << "Game over. Player " << (game.getRank(0) == 0 ? 1 : 2) << " won!" << std::endl;
+    }
 }
 
-void playHexCSAVsHuman(std::string model) {
-    HumanStrategy human_player(true);
+void playHexCSAVsHuman(std::string model, bool for_python) {
+    HumanStrategy human_player(for_python);
     CSANetworkStrategy CSAplayer1;
     if (model.length()) {
         CSAplayer1.loadStrategy(model);
     }
     Game game;
     game.reset();
-    initializePythonSettings();
-    std::cout << game.asciiStatePython() << std::endl;
-    while (game.takeStrategyTurn({&CSAplayer1, &human_player})) {
+    if (for_python) {
+        initializePythonSettings();
         std::cout << game.asciiStatePython() << std::endl;
+    } else {
+        std::cout << game.asciiState() << std::endl;
     }
-    std::cout << game.asciiStatePython() << std::endl;
-    std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
+
+    while (game.takeStrategyTurn({&CSAplayer1, &human_player})) {
+        std::cout << (for_python ? game.asciiStatePython() : game.asciiState()) << std::endl;
+    }
+
+    if (for_python) {
+        std::cout << game.asciiStatePython() << std::endl;
+        std::cout << "__GAME_OVER__ " << (game.getRank(0) ? 0 : 1) << std::endl;
+    } else {
+        std::cout << game.asciiState() << std::endl;
+        std::cout << "Game over. Player " << (game.getRank(0) == 0 ? 1 : 2) << " won!" << std::endl;
+    }
+
 }
 
 
@@ -348,14 +371,22 @@ int main (int argc, char* argv[]) {
         train_td = true;
     }
     else if (boost::iequals(what, "esplay")) {
-        train_td = false;
-        playHexCSAVsHuman(model);
+        playHexCSAVsHuman(model, false);
+        return 0;
+    }
+    else if (boost::iequals(what, "espython")) {
+        playHexCSAVsHuman(model, true);
         return 0;
     }
     else if (boost::iequals(what, "tdplay")) {
-        playHexTDVsHuman(model);
+        playHexTDVsHuman(model, false);
         return 0;
-    } else {
+    }
+    else if (boost::iequals(what, "tdpython")) {
+        playHexTDVsHuman(model, true);
+        return 0;
+    }
+    else {
         std::cout << "invalid input. Options are: traines (or es), traintd (or td), esplay, tdplay" << std::endl;
         return 1;
     }
