@@ -25,7 +25,7 @@ def main():
         x, y = [], []
         with open(fname, 'r') as f:
             lines = f.readlines()
-            for line in lines[1:]:
+            for line in lines:
                 dp = line.split(' ')
                 x.append( float(dp[0]) )
                 y.append( float(dp[1]) )
