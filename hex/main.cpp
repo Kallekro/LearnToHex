@@ -102,6 +102,32 @@ public:
 
     }
 
+    void RandomPlayersBaseline() {
+        Game game = m_algorithm.GetGame();
+
+        RandomStrategy rPlayer1;
+        RandomStrategy rPlayer2;
+
+        double total_games_played = 0;
+        double player1_wins = 0;
+
+        std::ofstream randomPlayersBaselineStatsOutstream("logs/randomPlayersBaseline.log");
+
+        for (int i=0; i < 500; i++) {
+            for (int i=0; i < 100; i ++) {
+                game.reset();
+                while (game.takeStrategyTurn({&rPlayer1, &rPlayer2})) {}
+                if (game.getRank(0) == 0) {
+                    player1_wins++;
+                }
+                total_games_played++;
+            }
+            double winrate = player1_wins / total_games_played;
+            randomPlayersBaselineStatsOutstream << i << " " << winrate << std::endl;
+        }
+        randomPlayersBaselineStatsOutstream.close();
+    }
+
 protected:
     bool m_silent = false;
 
@@ -356,6 +382,10 @@ template<class TrainerType>
 void trainingLoop(std::string modelName) {
     std::string prefix = modelName + std::to_string(BOARD_SIZE) + "x" + std::to_string(BOARD_SIZE);
     TrainerType trainer(prefix + "randomStats", prefix + "previousModelStats");
+
+    // Uncomment to create random players baseline
+    //trainer.RandomPlayersBaseline();
+
     double highest_winrate = 0;
     for (int i=0; i < trainer.NumberOfEpisodes(); i++) {
         if (i % 1000 == 0 && i != 0) { // Play example game and save model
