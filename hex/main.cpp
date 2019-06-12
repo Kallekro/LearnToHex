@@ -545,12 +545,16 @@ int main (int argc, char* argv[]) {
         return 1;
     }
 
+    if (model.length() > 0) {
+        model += "_";
+    }
+
     if (train_td) {
         std::cout << "Training model with TD algorithm." << std::endl;
-        trainingLoop<ModelTrainerTD>("TDmodel");
+        trainingLoop<ModelTrainerTD>(model + "TDmodel");
     } else {
         std::cout << "Training model with CSA-ES algorithm." << std::endl;
-        trainingLoop<ModelTrainerCSA>("CSAmodel");
+        trainingLoop<ModelTrainerCSA>(model + "CSAmodel");
     }
 
     return 0;
