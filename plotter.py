@@ -33,8 +33,10 @@ def main():
             data.append( fdata )
 
     fig = plt.figure()
-    for x, y in data:
-        plt.plot(x, y)
+    for x, y in data[:len(data)-1]:
+        plt.plot(x, y, 'o', markersize=0.5)
+
+    plt.plot(data[-1][0], data[-1][1])
 
     plt.title(title)
     plt.xlabel(xlabel)
